@@ -60,8 +60,20 @@ SSE stream from `VITE_ORCHESTRATOR_URL` (default `http://localhost:8080/agui`),
   for application-specific data, and its `value` field is untyped by design (`z.any()`
   / equivalent `Object`/`JsonNode` on the Java side), so it does not fight typed
   event classes the way extending `TEXT_MESSAGE_*` would.
+- `STATE_SNAPSHOT` **[spec]** — `{type, snapshot: any}`. **[convention — frozen]** The
+  backend must emit one `STATE_SNAPSHOT` (e.g. `{"evidenceReadiness": null}`) at the
+  start of the run that first touches state, before any `STATE_DELTA` targeting that
+  run's state. RFC 6902 `replace` against a path that doesn't yet exist is an error;
+  the snapshot establishes the path so later patches can use `replace` safely.
 - `STATE_DELTA` **[spec]** — `{type, delta: JsonPatchOp[]}`, applied via RFC 6902 JSON
   Patch semantics, for `evidenceReadiness` status-chip updates.
+
+**`evidenceReadiness` is two independent channels, not one** — it appears both as AG-UI
+state (`STATE_SNAPSHOT`/`STATE_DELTA`, drives the status chip) and as a `DecisionCard`
+prop delivered via A2UI `updateComponents` (§4). These are deliberately separate; the
+backend must update both when readiness changes. Do not collapse them into a single
+source later — the chip needs to update independently of, and often before, the
+decision panel's A2UI surface exists.
 
 **Progress lines — [convention — frozen]:** carried as `CUSTOM` events, not
 `TEXT_MESSAGE_*`:
@@ -91,10 +103,14 @@ once, not twice. This is the frozen decision — do not reintroduce a `source`-o
 
 ### 3.3 Session continuity: threadId, surfaceId, and multi-run sessions
 
-The action-forwarding convention (§3.4) means one case session spans **multiple AG-UI
-runs**: an initial review run, then one run per button click (e.g. the approval run
-triggered by "Approve Task Creation"). This has three consequences the backend must
-honor:
+SSE is server→client only, so the only way a client-side click reaches the backend is by
+starting a new AG-UI run (§3.4). A case session is therefore **at least three runs**:
+a **review run** (progress lines → `DecisionCard`/`EvidenceChecklist`/`NextActions`),
+a **preview run** (triggered by a `NextActions` click, renders `ApprovalPreview`), and
+an **approval run** (triggered by "Approve Task Creation", executes the write, renders
+`TaskCreatedCard`) — plus a possible **cancel run** in place of the approval run (§3.4.1).
+No run is ever left open waiting on a UI click; each run ends in its own `RUN_FINISHED`.
+This has consequences the backend must honor:
 
 1. **`threadId` is reused across every run in a case session.** The client generates
    (or receives, in `RUN_STARTED.threadId`) one `threadId` when the case is first
@@ -102,16 +118,18 @@ honor:
    that case (action clicks, retries after reconnect). The Java orchestrator uses
    `threadId` as the session correlation key.
 2. **The A2UI `surfaceId` persists across runs within a session.** The decision panel's
-   surface (e.g. `surfaceId: "case-D-10291"`) is created once by the first run's
-   `createSurface` message and is **updated** (`updateComponents`/`updateDataModel`),
-   never torn down and recreated, by later runs in the same session — including the
-   approval run. The client does not call `deleteSurface` on run boundaries.
+   surface (e.g. `surfaceId: "case-D-10291"`) is created once — by whichever run first
+   has UI to show (§3.5) — and is **updated** (`updateComponents`/`updateDataModel`),
+   never torn down and recreated, by every later run in the same session, including the
+   preview and approval runs. The client does not call `deleteSurface` on run
+   boundaries.
 3. **Pending-approval state is held server-side, keyed by `(threadId, surfaceId)`.**
-   When the orchestrator renders `ApprovalPreview`, the fact that this case is awaiting
-   approval is state it owns, keyed on that pair — not something the client tracks or
-   re-derives. The click that arrives on the next run (`forwardedProps.a2uiAction`,
-   carrying `sourceComponentId` and the originating `surfaceId`) is how the backend
-   correlates "this approval" with "the preview I showed."
+   When the orchestrator renders `ApprovalPreview` (end of the preview run), the fact
+   that this case is awaiting approval is state it owns, keyed on that pair — not
+   something the client tracks or re-derives. The click that arrives on the next run
+   (`forwardedProps.a2uiAction`, carrying `sourceComponentId` and the originating
+   `surfaceId`) is how the backend correlates "this approval-or-cancel" with "the
+   preview I showed."
 
 ### 3.4 A2UI client actions (button clicks)
 
@@ -129,6 +147,23 @@ agent.runAgent({ threadId, forwardedProps: { a2uiAction: <A2uiClientAction> } })
 `forwardedProps: any` is a verified field on `RunAgentInput` **[spec]**, the standard
 AG-UI escape hatch for client→agent app-specific data.
 
+#### 3.4.1 Cancel and Edit
+
+**[convention — frozen]** "Cancel" on `ApprovalPreview` dispatches a real action
+(`name: "cancel_task_creation"`) exactly like Approve, starting a **cancel run** on the
+same `threadId`/`surfaceId`. This is the resolution to the gap where §3.3's server-owned
+pending-approval state would otherwise go stale after a client-only cancel: the cancel
+run's job is to clear that server-side pending state and re-render the surface back to
+the decision view (re-issuing `DecisionCard`/`EvidenceChecklist`/`NextActions` via
+`updateComponents` on the existing surface), then `RUN_FINISHED`. The client does not
+locally revert the view on Cancel; it waits for the cancel run's `updateComponents`,
+consistent with every other state change being server-driven.
+
+"Edit" is the one client-only exception: it is intercepted before any action is
+dispatched (per the original scope note, "Edit flow not in demo scope") and never
+reaches the backend. If Edit becomes real in a future iteration, it should follow the
+same dispatched-action pattern as Cancel, not stay client-local.
+
 ### 3.5 `createSurface` lifecycle
 
 **[convention — frozen]** The backend sends `createSurface` for a given `surfaceId`
@@ -136,9 +171,9 @@ AG-UI escape hatch for client→agent app-specific data.
 very first run, since early runs are progress-line-only). The client is idempotent on
 this: if a `createSurface` arrives for a `surfaceId` that already exists in the local
 `MessageProcessor`, it is ignored (logged, not treated as an error) rather than
-recreating the surface. This matters because the approval run's response continues the
-same surface (§3.3) — it must not resend `createSurface`, but the client tolerates it
-defensively if it does.
+recreating the surface. This matters because the preview, approval, and cancel runs all
+continue the same surface (§3.3) — none of them should resend `createSurface`, but the
+client tolerates it defensively if one does.
 
 ## 4. A2UI catalog
 
@@ -209,13 +244,24 @@ from `@ag-ui/core`) — including the `CUSTOM`/`progress`, `CUSTOM`/`a2ui`, and
 `forwardedProps.a2uiAction` shapes from §3 — replayed on a timer (~300–800ms apart) by
 a scripted agent that satisfies the same subscriber interface `HttpAgent` does. Swapping
 to a live backend is a `VITE_ORCHESTRATOR_URL` change, not a code change. The mock
-reuses one `threadId` for the whole session and sends exactly one `createSurface`
-(pending-approval run reuses the surface, per §3.3/§3.5). Two runs: the initial review
-run (ending after `NextActions` renders) and the approval run (triggered by the
-"Create Evidence Request Task" → click → `ApprovalPreview` → "Approve Task Creation"
-click), each its own `RUN_STARTED`/`RUN_FINISHED` pair on the shared `threadId`. Cancel
-returns to the decision view (client-side); Edit shows a toast, "Edit flow not in demo
-scope."
+reuses one `threadId` for the whole session and sends exactly one `createSurface`, on
+the review run (later runs reuse the surface, per §3.3/§3.5). Three runs, matching §3.3:
+
+1. **Review run** — `RUN_STARTED` → progress lines → `STATE_SNAPSHOT` → merge progress
+   lines → `STATE_DELTA` → `createSurface` + `DecisionCard`/`EvidenceChecklist`/
+   `NextActions` → `RUN_FINISHED`.
+2. **Preview run** — triggered by the `NextActions` "Create Evidence Request Task"
+   click (`forwardedProps.a2uiAction`) → `RUN_STARTED` → `updateComponents` swaps the
+   surface to `ApprovalPreview` → `RUN_FINISHED`.
+3. **Approval run** — triggered by "Approve Task Creation" → `RUN_STARTED` → the
+   "Creating evidence request task..." progress lines → `updateComponents` swaps the
+   surface to `TaskCreatedCard` → `RUN_FINISHED`.
+
+Cancel (from `ApprovalPreview`) triggers an alternate **cancel run** in place of the
+approval run — `RUN_STARTED` → `updateComponents` reverts the surface to the decision
+view → `RUN_FINISHED` — per §3.4.1; the client does not revert the view itself. Edit
+is intercepted client-side before dispatch and shows a toast, "Edit flow not in demo
+scope," never starting a run.
 
 ## 8. Testing
 
