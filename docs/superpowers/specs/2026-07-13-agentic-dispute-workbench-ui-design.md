@@ -203,6 +203,20 @@ plausible" means in practice.)
 `ApprovalPreview` is visually distinguished (border + icon) as the human-approval gate
 — "nothing has been written yet."
 
+**Addendum — composing three simultaneous cards under one A2UI root:**
+`A2uiSurface` renders exactly one root component per surface (`id: "root"`), but the
+decision view needs `DecisionCard`, `EvidenceChecklist`, and `NextActions` visible at
+once. Since the catalog is closed (no generic `Column`/layout component allowed),
+`DecisionCard` carries two extra plumbing props — `checklistId: ComponentId` and
+`actionsId: ComponentId` (both optional) — and calls A2UI's real child-composition
+mechanism (`buildChild`) to nest the components those ids point to. `DecisionCard` is
+always `root`; `EvidenceChecklist` and `NextActions` are separate entries in the same
+`updateComponents.components` array, referenced only through those two ids — not
+independently reachable. This is composition via the protocol's own mechanism, not a
+new catalog entry, and it doesn't change §3's session/surface/createSurface contract:
+still one surface, same id, same lifecycle. `ApprovalPreview` and `TaskCreatedCard`
+remain standalone roots (no children) since they're single-card states.
+
 ### 4.2 Closed catalog / unknown-component fallback
 
 `@a2ui/react`'s built-in behavior for an unrecognized `component` type is a plain "Unknown
