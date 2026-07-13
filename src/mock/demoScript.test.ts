@@ -42,19 +42,54 @@ describe('demoScript runs', () => {
     });
   });
 
-  it('approvalRun ends on TaskCreatedCard and cancelRun reverts to DecisionCard', () => {
-    type LooseEvent = { type: string; name?: string; value?: Record<string, unknown> };
-    const lastComponents = (run: typeof approvalRun) =>
-      run.events
-        .map((scripted) => scripted.event as LooseEvent)
-        .filter((event) => event.type === EventType.CUSTOM && event.name === 'a2ui')
-        .map((event) => event.value as Record<string, unknown>)
-        .filter((value) => 'updateComponents' in value)
-        .pop() as { updateComponents: { components: Array<{ component: string }> } };
+  // Regression guard for the design doc §4/§4.1 amendment: updateComponents must
+  // carry three distinct flat sibling entries (never an inlined/nested child
+  // object), with DecisionCard's checklistId/actionsId resolving to the other
+  // two entries' own ids.
+  it('the decision view payload is exactly three flat entries with resolving composition references', () => {
+    const components = lastUpdateComponents(reviewRun);
+    expect(components).toHaveLength(3);
 
-    expect(lastComponents(approvalRun).updateComponents.components[0].component).toBe(
-      'TaskCreatedCard',
-    );
-    expect(lastComponents(cancelRun).updateComponents.components[0].component).toBe('DecisionCard');
+    const [decisionCard, checklist, actions] = components as Array<Record<string, unknown>>;
+    expect(decisionCard).toMatchObject({ id: 'root', component: 'DecisionCard' });
+    expect(checklist).toMatchObject({ component: 'EvidenceChecklist' });
+    expect(actions).toMatchObject({ component: 'NextActions' });
+
+    // Composition is by id reference only — never nested objects.
+    expect(decisionCard.checklistId).toBe(checklist.id);
+    expect(decisionCard.actionsId).toBe(actions.id);
+    expect(typeof decisionCard.checklistId).toBe('string');
+    expect(typeof decisionCard.actionsId).toBe('string');
+  });
+
+  it('previewRun and approvalRun render ApprovalPreview/TaskCreatedCard as standalone single-entry roots', () => {
+    const previewComponents = lastUpdateComponents(previewRun);
+    expect(previewComponents).toHaveLength(1);
+    expect(previewComponents[0]).toMatchObject({ id: 'root', component: 'ApprovalPreview' });
+    expect(previewComponents[0]).not.toHaveProperty('checklistId');
+    expect(previewComponents[0]).not.toHaveProperty('actionsId');
+
+    const approvalComponents = lastUpdateComponents(approvalRun);
+    expect(approvalComponents).toHaveLength(1);
+    expect(approvalComponents[0]).toMatchObject({ id: 'root', component: 'TaskCreatedCard' });
+  });
+
+  it('cancelRun reverts to the same three-entry decision view as reviewRun', () => {
+    const components = lastUpdateComponents(cancelRun);
+    expect(components).toHaveLength(3);
+    expect(components[0]).toMatchObject({ id: 'root', component: 'DecisionCard' });
   });
 });
+
+type LooseEvent = { type: string; name?: string; value?: Record<string, unknown> };
+
+function lastUpdateComponents(run: typeof reviewRun): unknown[] {
+  const payload = run.events
+    .map((scripted) => scripted.event as LooseEvent)
+    .filter((event) => event.type === EventType.CUSTOM && event.name === 'a2ui')
+    .map((event) => event.value as Record<string, unknown>)
+    .filter((value) => 'updateComponents' in value)
+    .pop() as { updateComponents: { components: unknown[] } } | undefined;
+  if (!payload) throw new Error('run has no updateComponents event');
+  return payload.updateComponents.components;
+}
