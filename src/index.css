@@ -1,1 +1,66 @@
 @import 'tailwindcss';
+
+@import '@fontsource-variable/space-grotesk/wght.css';
+@import '@fontsource-variable/inter/wght.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+
+/*
+ * "The case file, instrumented." Design tokens for the dispute workbench.
+ * Amber (--color-pending) and green (--color-committed) are reserved for
+ * state meaning (the approval gate / a committed write) — never decoration.
+ */
+@theme {
+  --color-ink: #1a2233;
+  --color-paper: #fafbfc;
+  --color-panel: #ffffff;
+  --color-ledger-line: #e6eaf0;
+
+  --color-orchestrator: #334155;
+  --color-case-review: #1d6fb8;
+  --color-policy: #7a3e9d;
+
+  --color-pending: #b45309;
+  --color-pending-surface: #fef3e7;
+  --color-committed: #157f3d;
+  --color-committed-surface: #eaf7ef;
+
+  --font-display: 'Space Grotesk Variable', sans-serif;
+  --font-sans: 'Inter Variable', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --shadow-card: 0 1px 2px rgba(26, 34, 51, 0.06);
+
+  --radius-card: 6px;
+
+  --animate-ledger-in: ledger-in 150ms ease-out;
+}
+
+@keyframes ledger-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @theme {
+    --animate-ledger-in: none;
+  }
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}

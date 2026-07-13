@@ -5,20 +5,24 @@ export const EvidenceChecklist = createComponentImplementation(
   EvidenceChecklistApi,
   ({ props }) => {
     return (
-      <ul className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <ul className="space-y-1.5 border-t border-ledger-line pt-3">
         {props.items.map((item, index) => (
-          <li key={index} className="flex items-center gap-2 py-1 text-sm">
+          <li key={index} className="flex items-center gap-2 text-sm">
             <span
               aria-hidden
+              className={`w-3 font-mono ${item.present ? 'text-committed' : 'text-ink/30'}`}
+            >
+              {item.present ? '✓' : '·'}
+            </span>
+            <span
               className={
                 item.present
-                  ? 'inline-flex h-4 w-4 items-center justify-center rounded-sm bg-emerald-600 text-xs text-white'
-                  : 'inline-flex h-4 w-4 items-center justify-center rounded-sm border border-slate-300 text-xs'
+                  ? 'text-ink'
+                  : 'text-ink/45 underline decoration-dotted decoration-ink/30 underline-offset-4'
               }
             >
-              {item.present ? '✓' : ''}
+              {item.label}
             </span>
-            <span className={item.present ? 'text-slate-900' : 'text-slate-500'}>{item.label}</span>
           </li>
         ))}
       </ul>

@@ -17,6 +17,10 @@ const OUT_OF_SCOPE_LABELS: Record<string, string> = {
   save_case_note: 'Save Case Note',
 };
 
+// Approve Task Creation is the one solid button in the whole app (see
+// ApprovalPreview) — every button here stays quiet so that stays true.
+const PRIMARY_ACTION_ID = 'create_evidence_request_task';
+
 export const NextActions = createBinderlessComponentImplementation(
   NextActionsApi,
   ({ context }) => {
@@ -24,14 +28,19 @@ export const NextActions = createBinderlessComponentImplementation(
     const [scopeNotice, setScopeNotice] = useState<string | null>(null);
 
     return (
-      <div className="flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-ledger-line pt-3">
         {actions.map((action) => {
           const outOfScopeLabel = OUT_OF_SCOPE_LABELS[action.id];
+          const isPrimary = action.id === PRIMARY_ACTION_ID;
           return (
             <button
               key={action.id}
               type="button"
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+              className={
+                isPrimary
+                  ? 'rounded-[var(--radius-card)] border border-ink px-3 py-1.5 text-sm font-medium text-ink hover:bg-ink hover:text-paper'
+                  : 'text-sm text-ink/60 underline decoration-ink/25 underline-offset-2 hover:text-ink hover:decoration-ink/50'
+              }
               onClick={() => {
                 if (outOfScopeLabel) {
                   setScopeNotice(`${outOfScopeLabel} is not in demo scope`);
@@ -44,7 +53,7 @@ export const NextActions = createBinderlessComponentImplementation(
             </button>
           );
         })}
-        {scopeNotice && <p className="basis-full text-xs text-slate-500">{scopeNotice}</p>}
+        {scopeNotice && <p className="basis-full text-xs text-ink/45">{scopeNotice}</p>}
       </div>
     );
   },

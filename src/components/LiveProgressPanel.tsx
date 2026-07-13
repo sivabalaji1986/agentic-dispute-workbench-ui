@@ -3,16 +3,22 @@ import { useWorkbenchStore } from '../state/workbenchStore';
 import type { AgentSource } from '../agui/events';
 import { reconnect } from '../agui/client';
 
-const SOURCE_STYLES: Record<AgentSource, string> = {
-  orchestrator: 'bg-slate-700 text-white',
-  'case-review': 'bg-blue-600 text-white',
-  policy: 'bg-purple-600 text-white',
+const MARKER_COLOR: Record<AgentSource, string> = {
+  orchestrator: 'bg-orchestrator',
+  'case-review': 'bg-case-review',
+  policy: 'bg-policy',
 };
 
-const SOURCE_LABELS: Record<AgentSource, string> = {
-  orchestrator: 'Orchestrator',
-  'case-review': 'Case Review Agent',
-  policy: 'Policy Agent',
+const TAG_COLOR: Record<AgentSource, string> = {
+  orchestrator: 'text-orchestrator',
+  'case-review': 'text-case-review',
+  policy: 'text-policy',
+};
+
+const TAG_LABEL: Record<AgentSource, string> = {
+  orchestrator: 'ORCH',
+  'case-review': 'CASE REVIEW',
+  policy: 'POLICY',
 };
 
 export function LiveProgressPanel() {
@@ -28,64 +34,91 @@ export function LiveProgressPanel() {
   }, [progressLines, paused]);
 
   return (
-    <section className="flex h-full flex-col border-r border-slate-200 bg-slate-50 p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Live agent progress
-        </h2>
-        <div className="flex items-center gap-2">
+    <section className="flex h-full flex-col border-r border-ledger-line bg-panel">
+      <div className="border-b border-ledger-line px-4 py-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-xs font-medium uppercase tracking-[0.14em] text-ink/70">
+            Live agent progress
+          </h2>
           {evidenceReadiness && (
-            <span className="rounded bg-slate-200 px-1.5 py-0.5 text-xs font-medium text-slate-700">
+            <span className="rounded bg-ledger-line px-1.5 py-0.5 font-mono text-[11px] text-ink/70">
               {evidenceReadiness}
             </span>
           )}
-          <span className="text-xs font-medium text-slate-500">{statusLabel(connectionStatus)}</span>
         </div>
+        <ConnectionStrip status={connectionStatus} />
       </div>
-      {connectionStatus === 'disconnected' && (
-        <button
-          type="button"
-          className="mb-2 self-start rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
-          onClick={reconnect}
-        >
-          Reconnect
-        </button>
-      )}
       <div
         ref={containerRef}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
-        className="flex-1 space-y-1.5 overflow-y-auto"
+        className="relative flex-1 overflow-y-auto px-4 py-3"
       >
-        {progressLines.map((line) => (
-          <div key={line.id} data-testid="progress-line" className="flex items-start gap-2 text-sm">
-            <span
-              className={`rounded px-1.5 py-0.5 text-xs font-medium ${SOURCE_STYLES[line.source]}`}
-            >
-              {SOURCE_LABELS[line.source]}
-            </span>
-            <span className="text-slate-700">{line.text}</span>
-            <span className="ml-auto shrink-0 text-xs text-slate-400">
-              {new Date(line.timestamp).toLocaleTimeString()}
-            </span>
+        {progressLines.length === 0 ? (
+          <p className="pt-2 text-sm text-ink/40">Awaiting case submission.</p>
+        ) : (
+          <div className="relative">
+            <div aria-hidden className="absolute bottom-0 left-[7px] top-0 w-px bg-ledger-line" />
+            <div className="space-y-3">
+              {progressLines.map((line) => (
+                <div
+                  key={line.id}
+                  data-testid="progress-line"
+                  className="relative animate-ledger-in pl-6"
+                >
+                  <span
+                    aria-hidden
+                    className={`absolute left-[4px] top-1.5 h-2 w-2 ${MARKER_COLOR[line.source]}`}
+                  />
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span
+                      className={`font-mono text-[10px] font-semibold uppercase tracking-wider ${TAG_COLOR[line.source]}`}
+                    >
+                      {TAG_LABEL[line.source]}
+                    </span>
+                    <span className="shrink-0 font-mono text-[10px] tabular-nums text-ink/35">
+                      {new Date(line.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-sm leading-snug text-ink">{line.text}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+        )}
       </div>
     </section>
   );
 }
 
-function statusLabel(status: string): string {
-  switch (status) {
-    case 'idle':
-      return 'Idle';
-    case 'connecting':
-      return 'Connecting…';
-    case 'streaming':
-      return 'Streaming';
-    case 'finished':
-      return 'Finished';
-    default:
-      return 'Disconnected';
+function ConnectionStrip({ status }: { status: string }) {
+  if (status === 'connecting') {
+    return (
+      <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink/50">
+        <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink/50" />
+        Connecting…
+      </p>
+    );
   }
+  if (status === 'disconnected') {
+    return (
+      <div className="mt-1.5 -mx-4 flex items-center justify-between bg-pending-surface px-4 py-1.5 text-xs">
+        <span className="text-pending">Disconnected</span>
+        <button
+          type="button"
+          onClick={reconnect}
+          className="font-medium text-pending underline decoration-pending/40 underline-offset-2 hover:decoration-pending"
+        >
+          Reconnect
+        </button>
+      </div>
+    );
+  }
+  if (status === 'finished') {
+    return <p className="mt-1.5 font-mono text-[11px] text-ink/40">Run complete</p>;
+  }
+  if (status === 'streaming') {
+    return <p className="mt-1.5 text-xs text-ink/50">Streaming</p>;
+  }
+  return null;
 }
