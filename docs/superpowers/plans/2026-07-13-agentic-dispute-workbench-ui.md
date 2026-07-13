@@ -29,6 +29,7 @@
 ## Task 1: Project scaffold
 
 **Files:**
+
 - Create: `package.json`
 - Create: `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`
 - Create: `vite.config.ts`
@@ -40,6 +41,7 @@
 - Create: `.env.example`
 
 **Interfaces:**
+
 - Produces: an installable, buildable Vite + React 19 + TS strict project. `npm run build`, `npm run dev`, `npm run test`, `npm run lint`, `npm run typecheck` scripts exist (test/lint will only have real work to check starting Task 2/3).
 
 - [ ] **Step 1: Create `package.json`**
@@ -105,10 +107,7 @@
 ```json
 {
   "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ]
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
 }
 ```
 
@@ -195,7 +194,7 @@ export default defineConfig({
 - [ ] **Step 7: Create `src/index.css`**
 
 ```css
-@import "tailwindcss";
+@import 'tailwindcss';
 ```
 
 - [ ] **Step 8: Create `src/App.tsx` (placeholder — replaced fully in Task 13)**
@@ -269,11 +268,13 @@ git commit -m "Scaffold Vite + React 19 + TypeScript strict + Tailwind v4 projec
 ## Task 2: Lint and format tooling
 
 **Files:**
+
 - Create: `eslint.config.js`
 - Create: `.prettierrc.json`
 - Create: `.prettierignore`
 
 **Interfaces:**
+
 - Produces: `npm run lint` and `npm run format:check` as clean, working commands for every later task.
 
 - [ ] **Step 1: Create `eslint.config.js`**
@@ -308,6 +309,10 @@ export default [
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      // TypeScript resolves global identifiers (document, window, ...) itself;
+      // no-undef produces false positives without a globals list and typescript-eslint's
+      // own guidance is to turn it off for TS files rather than adding a globals package.
+      'no-undef': 'off',
     },
   },
 ];
@@ -351,10 +356,12 @@ git commit -m "Add ESLint flat config and Prettier formatting"
 ## Task 3: AG-UI/A2UI package smoke test
 
 **Files:**
+
 - Create: `src/test/setup.ts`
 - Create: `src/test/smoke.test.ts`
 
 **Interfaces:**
+
 - Produces: confirmation that `@ag-ui/client`, `@ag-ui/core`, `@a2ui/web_core/v0_9`, and `@a2ui/react/v0_9` all resolve correctly under Vite/Vitest's ESM + subpath-export resolution, before any real feature code is built on top.
 
 - [ ] **Step 1: Create `src/test/setup.ts`**
@@ -406,10 +413,12 @@ git commit -m "Add AG-UI/A2UI package resolution smoke test"
 ## Task 4: AG-UI event contract types
 
 **Files:**
+
 - Create: `src/agui/events.ts`
 - Test: `src/agui/events.test.ts`
 
 **Interfaces:**
+
 - Produces: `AgentSource` type, `ProgressEventValue` interface, `isProgressCustomEvent()`, `isA2uiCustomEvent()` — used by Task 10 (bridge) and Task 11 (mock).
 
 - [ ] **Step 1: Write the failing test**
@@ -497,6 +506,7 @@ git commit -m "Add AG-UI CUSTOM event discrimination for progress/a2ui payloads"
 ## Task 5: A2UI catalog foundations
 
 **Files:**
+
 - Create: `src/components/catalog/types.ts`
 - Create: `src/components/catalog/schemas.ts`
 - Create: `src/components/catalog/testUtils.tsx`
@@ -504,6 +514,7 @@ git commit -m "Add AG-UI CUSTOM event discrimination for progress/a2ui payloads"
 - Test: `src/components/catalog/UnknownComponentFallback.test.tsx`
 
 **Interfaces:**
+
 - Consumes: nothing outside `@a2ui/react/v0_9` and `@a2ui/web_core/v0_9`.
 - Produces: `A2uiComponentJson` type; `DecisionCardApi`, `EvidenceChecklistApi`, `NextActionsApi`, `ApprovalPreviewApi`, `TaskCreatedCardApi`, `UnknownComponentFallbackApi` (all `{name, schema}` `ComponentApi` objects); `renderA2uiComponents(catalogComponents, components, options?)` test helper; `UnknownComponentFallback` (a `ReactComponentImplementation`). Tasks 6–8 consume all of these.
 
@@ -593,7 +604,7 @@ export const UnknownComponentFallbackApi = {
 
 - [ ] **Step 3: Create the test helper `src/components/catalog/testUtils.tsx`**
 
-This renders through the *real* A2UI pipeline (`Catalog` + `MessageProcessor` + `A2uiSurface`), not by calling components directly, so tests exercise the same binder/dispatch path production code uses.
+This renders through the _real_ A2UI pipeline (`Catalog` + `MessageProcessor` + `A2uiSurface`), not by calling components directly, so tests exercise the same binder/dispatch path production code uses.
 
 ```tsx
 import { render } from '@testing-library/react';
@@ -657,7 +668,14 @@ describe('UnknownComponentFallback', () => {
   it('renders unknown component types as a safe fallback with raw JSON, never crashing', () => {
     renderA2uiComponents(
       [UnknownComponentFallback],
-      [{ id: 'root', component: 'UnknownComponentFallback', originalType: 'SomeUnimaginedWidget', raw: JSON.stringify({ title: 'hello', nested: { a: 1 } }) }],
+      [
+        {
+          id: 'root',
+          component: 'UnknownComponentFallback',
+          originalType: 'SomeUnimaginedWidget',
+          raw: JSON.stringify({ title: 'hello', nested: { a: 1 } }),
+        },
+      ],
     );
 
     expect(screen.getByText(/Unknown component: SomeUnimaginedWidget/)).toBeInTheDocument();
@@ -717,12 +735,14 @@ git commit -m "Add A2UI catalog foundations: schemas, test harness, unknown-comp
 ## Task 6: DecisionCard and EvidenceChecklist components
 
 **Files:**
+
 - Create: `src/components/catalog/DecisionCard.tsx`
 - Create: `src/components/catalog/EvidenceChecklist.tsx`
 - Test: `src/components/catalog/DecisionCard.test.tsx`
 - Test: `src/components/catalog/EvidenceChecklist.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `DecisionCardApi`, `EvidenceChecklistApi` (Task 5), `renderA2uiComponents` (Task 5).
 - Produces: `DecisionCard`, `EvidenceChecklist` (`ReactComponentImplementation`s) — consumed by Task 7's composition test and Task 8's catalog assembly.
 
@@ -770,22 +790,25 @@ Expected: FAIL — `Cannot find module './DecisionCard'`.
 import { createComponentImplementation } from '@a2ui/react/v0_9';
 import { DecisionCardApi } from './schemas';
 
-export const DecisionCard = createComponentImplementation(DecisionCardApi, ({ props, buildChild }) => {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-        {props.disputeType}
-      </p>
-      <h3 className="mt-1 text-lg font-semibold text-slate-900">{props.status}</h3>
-      <p className="mt-2 text-sm text-slate-600">{props.evidenceReadiness}</p>
-      <p className="mt-3 text-sm font-medium text-blue-700">
-        Recommended: {props.recommendedAction}
-      </p>
-      {props.checklistId && <div className="mt-4">{buildChild(props.checklistId)}</div>}
-      {props.actionsId && <div className="mt-4">{buildChild(props.actionsId)}</div>}
-    </div>
-  );
-});
+export const DecisionCard = createComponentImplementation(
+  DecisionCardApi,
+  ({ props, buildChild }) => {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          {props.disputeType}
+        </p>
+        <h3 className="mt-1 text-lg font-semibold text-slate-900">{props.status}</h3>
+        <p className="mt-2 text-sm text-slate-600">{props.evidenceReadiness}</p>
+        <p className="mt-3 text-sm font-medium text-blue-700">
+          Recommended: {props.recommendedAction}
+        </p>
+        {props.checklistId && <div className="mt-4">{buildChild(props.checklistId)}</div>}
+        {props.actionsId && <div className="mt-4">{buildChild(props.actionsId)}</div>}
+      </div>
+    );
+  },
+);
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -838,27 +861,30 @@ Expected: FAIL — `Cannot find module './EvidenceChecklist'`.
 import { createComponentImplementation } from '@a2ui/react/v0_9';
 import { EvidenceChecklistApi } from './schemas';
 
-export const EvidenceChecklist = createComponentImplementation(EvidenceChecklistApi, ({ props }) => {
-  return (
-    <ul className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      {props.items.map((item, index) => (
-        <li key={index} className="flex items-center gap-2 py-1 text-sm">
-          <span
-            aria-hidden
-            className={
-              item.present
-                ? 'inline-flex h-4 w-4 items-center justify-center rounded-sm bg-emerald-600 text-xs text-white'
-                : 'inline-flex h-4 w-4 items-center justify-center rounded-sm border border-slate-300 text-xs'
-            }
-          >
-            {item.present ? '✓' : ''}
-          </span>
-          <span className={item.present ? 'text-slate-900' : 'text-slate-500'}>{item.label}</span>
-        </li>
-      ))}
-    </ul>
-  );
-});
+export const EvidenceChecklist = createComponentImplementation(
+  EvidenceChecklistApi,
+  ({ props }) => {
+    return (
+      <ul className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        {props.items.map((item, index) => (
+          <li key={index} className="flex items-center gap-2 py-1 text-sm">
+            <span
+              aria-hidden
+              className={
+                item.present
+                  ? 'inline-flex h-4 w-4 items-center justify-center rounded-sm bg-emerald-600 text-xs text-white'
+                  : 'inline-flex h-4 w-4 items-center justify-center rounded-sm border border-slate-300 text-xs'
+              }
+            >
+              {item.present ? '✓' : ''}
+            </span>
+            <span className={item.present ? 'text-slate-900' : 'text-slate-500'}>{item.label}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  },
+);
 ```
 
 - [ ] **Step 8: Run test to verify it passes**
@@ -878,6 +904,7 @@ git commit -m "Add DecisionCard and EvidenceChecklist catalog components"
 ## Task 7: NextActions, ApprovalPreview, TaskCreatedCard, and composition
 
 **Files:**
+
 - Create: `src/components/catalog/NextActions.tsx`
 - Create: `src/components/catalog/ApprovalPreview.tsx`
 - Create: `src/components/catalog/TaskCreatedCard.tsx`
@@ -887,6 +914,7 @@ git commit -m "Add DecisionCard and EvidenceChecklist catalog components"
 - Test: `src/components/catalog/composition.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `NextActionsApi`, `ApprovalPreviewApi`, `TaskCreatedCardApi` (Task 5), `renderA2uiComponents` (Task 5), `DecisionCard`/`EvidenceChecklist` (Task 6).
 - Produces: `NextActions`, `ApprovalPreview`, `TaskCreatedCard` — consumed by Task 8's catalog assembly.
 
@@ -949,26 +977,29 @@ interface NextActionItem {
   label: string;
 }
 
-export const NextActions = createBinderlessComponentImplementation(NextActionsApi, ({ context }) => {
-  const { actions } = context.componentModel.properties as { actions: NextActionItem[] };
+export const NextActions = createBinderlessComponentImplementation(
+  NextActionsApi,
+  ({ context }) => {
+    const { actions } = context.componentModel.properties as { actions: NextActionItem[] };
 
-  return (
-    <div className="flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      {actions.map(action => (
-        <button
-          key={action.id}
-          type="button"
-          className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-          onClick={() => {
-            void context.dispatchAction({ event: { name: action.id, context: {} } });
-          }}
-        >
-          {action.label}
-        </button>
-      ))}
-    </div>
-  );
-});
+    return (
+      <div className="flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        {actions.map((action) => (
+          <button
+            key={action.id}
+            type="button"
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+            onClick={() => {
+              void context.dispatchAction({ event: { name: action.id, context: {} } });
+            }}
+          >
+            {action.label}
+          </button>
+        ))}
+      </div>
+    );
+  },
+);
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -1014,10 +1045,14 @@ describe('ApprovalPreview', () => {
     expect(screen.getByText('Missing customer declaration')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Approve Task Creation' }));
-    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ name: 'approve_task_creation' }));
+    expect(onAction).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'approve_task_creation' }),
+    );
 
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ name: 'cancel_task_creation' }));
+    expect(onAction).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'cancel_task_creation' }),
+    );
   });
 });
 ```
@@ -1037,7 +1072,9 @@ export const ApprovalPreview = createComponentImplementation(ApprovalPreviewApi,
   return (
     <div className="rounded-lg border-2 border-amber-500 bg-amber-50 p-4 shadow-sm">
       <div className="flex items-center gap-2">
-        <span aria-hidden className="text-lg">⚠️</span>
+        <span aria-hidden className="text-lg">
+          ⚠️
+        </span>
         <h3 className="text-base font-semibold text-amber-900">
           Approval required — nothing written yet
         </h3>
@@ -1144,7 +1181,9 @@ export const TaskCreatedCard = createComponentImplementation(TaskCreatedCardApi,
   return (
     <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 shadow-sm">
       <div className="flex items-center gap-2">
-        <span aria-hidden className="text-lg">✅</span>
+        <span aria-hidden className="text-lg">
+          ✅
+        </span>
         <h3 className="text-base font-semibold text-emerald-900">Task created</h3>
       </div>
       <dl className="mt-3 space-y-1 text-sm text-slate-700">
@@ -1216,7 +1255,9 @@ describe('DecisionCard composition', () => {
 
     expect(screen.getByText('Needs More Evidence')).toBeInTheDocument();
     expect(screen.getByText('Transaction record')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Create Evidence Request Task' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Create Evidence Request Task' }),
+    ).toBeInTheDocument();
   });
 });
 ```
@@ -1238,10 +1279,12 @@ git commit -m "Add NextActions, ApprovalPreview, TaskCreatedCard, and compositio
 ## Task 8: Catalog assembly
 
 **Files:**
+
 - Create: `src/components/catalog/catalogInstance.ts`
 - Test: `src/components/catalog/catalogInstance.test.ts`
 
 **Interfaces:**
+
 - Consumes: `DecisionCard`, `EvidenceChecklist`, `NextActions`, `ApprovalPreview`, `TaskCreatedCard`, `UnknownComponentFallback` (Tasks 5–7), `A2uiComponentJson` (Task 5).
 - Produces: `disputeCatalog` (a `Catalog<ReactComponentImplementation>`), `DISPUTE_CATALOG_ID`, `KNOWN_COMPONENT_TYPES`, `preprocessUnknownComponents(components)` — consumed by Task 9 (store) and Task 10 (bridge).
 
@@ -1250,7 +1293,11 @@ git commit -m "Add NextActions, ApprovalPreview, TaskCreatedCard, and compositio
 ```ts
 // src/components/catalog/catalogInstance.test.ts
 import { describe, expect, it } from 'vitest';
-import { disputeCatalog, KNOWN_COMPONENT_TYPES, preprocessUnknownComponents } from './catalogInstance';
+import {
+  disputeCatalog,
+  KNOWN_COMPONENT_TYPES,
+  preprocessUnknownComponents,
+} from './catalogInstance';
 
 describe('disputeCatalog', () => {
   it('registers exactly the five business components plus the fallback', () => {
@@ -1317,10 +1364,8 @@ export const disputeCatalog = new Catalog<ReactComponentImplementation>(DISPUTE_
  * UnknownComponentFallback safety net, so an unrecognized A2UI payload never
  * crashes the renderer. See design doc §4.2.
  */
-export function preprocessUnknownComponents(
-  components: A2uiComponentJson[],
-): A2uiComponentJson[] {
-  return components.map(component => {
+export function preprocessUnknownComponents(components: A2uiComponentJson[]): A2uiComponentJson[] {
+  return components.map((component) => {
     if ((KNOWN_COMPONENT_TYPES as readonly string[]).includes(component.component)) {
       return component;
     }
@@ -1351,10 +1396,12 @@ git commit -m "Assemble the closed dispute-workbench A2UI catalog"
 ## Task 9: Zustand store
 
 **Files:**
+
 - Create: `src/state/workbenchStore.ts`
 - Test: `src/state/workbenchStore.test.ts`
 
 **Interfaces:**
+
 - Consumes: `disputeCatalog` (Task 8), `AgentSource` (Task 4).
 - Produces: `useWorkbenchStore` (Zustand hook/store) with state `{caseId, disputeText, threadId, runId, connectionStatus, progressLines, evidenceReadiness, processor}` and actions `startCase`, `setRunId`, `setConnectionStatus`, `appendProgressLine`, `setEvidenceReadiness`. Consumed by Tasks 10, 12, 13.
 
@@ -1379,7 +1426,9 @@ describe('useWorkbenchStore', () => {
   });
 
   it('startCase sets case metadata and resets run-scoped state', () => {
-    useWorkbenchStore.getState().startCase({ caseId: 'D-10291', threadId: 't-1', disputeText: 'I paid...' });
+    useWorkbenchStore
+      .getState()
+      .startCase({ caseId: 'D-10291', threadId: 't-1', disputeText: 'I paid...' });
     const state = useWorkbenchStore.getState();
     expect(state.caseId).toBe('D-10291');
     expect(state.threadId).toBe('t-1');
@@ -1389,11 +1438,16 @@ describe('useWorkbenchStore', () => {
 
   it('appendProgressLine appends in call order with source and text preserved', () => {
     useWorkbenchStore.getState().appendProgressLine('orchestrator', 'Understanding dispute...');
-    useWorkbenchStore.getState().appendProgressLine('case-review', 'Checking transaction status...');
+    useWorkbenchStore
+      .getState()
+      .appendProgressLine('case-review', 'Checking transaction status...');
     const lines = useWorkbenchStore.getState().progressLines;
     expect(lines).toHaveLength(2);
     expect(lines[0]).toMatchObject({ source: 'orchestrator', text: 'Understanding dispute...' });
-    expect(lines[1]).toMatchObject({ source: 'case-review', text: 'Checking transaction status...' });
+    expect(lines[1]).toMatchObject({
+      source: 'case-review',
+      text: 'Checking transaction status...',
+    });
   });
 
   it('setEvidenceReadiness updates the status-chip value independently', () => {
@@ -1450,7 +1504,7 @@ interface WorkbenchState {
 
 let progressLineCounter = 0;
 
-export const useWorkbenchStore = create<WorkbenchState>(set => ({
+export const useWorkbenchStore = create<WorkbenchState>((set) => ({
   caseId: null,
   disputeText: '',
   threadId: null,
@@ -1471,19 +1525,19 @@ export const useWorkbenchStore = create<WorkbenchState>(set => ({
       evidenceReadiness: null,
     }),
 
-  setRunId: runId => set({ runId }),
+  setRunId: (runId) => set({ runId }),
 
-  setConnectionStatus: status => set({ connectionStatus: status }),
+  setConnectionStatus: (status) => set({ connectionStatus: status }),
 
   appendProgressLine: (source, text) =>
-    set(state => ({
+    set((state) => ({
       progressLines: [
         ...state.progressLines,
         { id: `line-${++progressLineCounter}`, source, text, timestamp: Date.now() },
       ],
     })),
 
-  setEvidenceReadiness: value => set({ evidenceReadiness: value }),
+  setEvidenceReadiness: (value) => set({ evidenceReadiness: value }),
 }));
 ```
 
@@ -1504,10 +1558,12 @@ git commit -m "Add Zustand workbench store"
 ## Task 10: AG-UI bridge
 
 **Files:**
+
 - Create: `src/agui/bridge.ts`
 - Test: `src/agui/bridge.test.ts`
 
 **Interfaces:**
+
 - Consumes: `isProgressCustomEvent`, `isA2uiCustomEvent` (Task 4), `useWorkbenchStore` (Task 9), `preprocessUnknownComponents` (Task 8).
 - Produces: `workbenchAgentSubscriber` (an `AgentSubscriber`), `resetBridgeState()` — consumed by Task 11 (mock) and Task 12 (client).
 
@@ -1553,7 +1609,11 @@ describe('workbenchAgentSubscriber', () => {
   });
 
   it('sets connection status to finished on RUN_FINISHED', () => {
-    const event: RunFinishedEvent = { type: EventType.RUN_FINISHED, threadId: 't-1', runId: 'run-1' };
+    const event: RunFinishedEvent = {
+      type: EventType.RUN_FINISHED,
+      threadId: 't-1',
+      runId: 'run-1',
+    };
     workbenchAgentSubscriber.onRunFinishedEvent?.({
       ...fakeParams(event),
       outcome: 'success',
@@ -1576,7 +1636,10 @@ describe('workbenchAgentSubscriber', () => {
     workbenchAgentSubscriber.onCustomEvent?.(fakeParams(event));
     const lines = useWorkbenchStore.getState().progressLines;
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toMatchObject({ source: 'case-review', text: 'Checking transaction status...' });
+    expect(lines[0]).toMatchObject({
+      source: 'case-review',
+      text: 'Checking transaction status...',
+    });
   });
 
   it('feeds a CUSTOM/a2ui event into the MessageProcessor', () => {
@@ -1586,7 +1649,10 @@ describe('workbenchAgentSubscriber', () => {
       name: 'a2ui',
       value: {
         version: 'v0.9',
-        createSurface: { surfaceId, catalogId: 'https://dispute-workbench.internal/catalogs/v1.json' },
+        createSurface: {
+          surfaceId,
+          catalogId: 'https://dispute-workbench.internal/catalogs/v1.json',
+        },
       },
     };
     const updateEvent: CustomEvent = {
@@ -1596,7 +1662,16 @@ describe('workbenchAgentSubscriber', () => {
         version: 'v0.9',
         updateComponents: {
           surfaceId,
-          components: [{ id: 'root', component: 'TaskCreatedCard', taskId: 'EVID-1', caseStatus: 'x', auditEntry: 'y', nextOwner: 'z' }],
+          components: [
+            {
+              id: 'root',
+              component: 'TaskCreatedCard',
+              taskId: 'EVID-1',
+              caseStatus: 'x',
+              auditEntry: 'y',
+              nextOwner: 'z',
+            },
+          ],
         },
       },
     };
@@ -1614,7 +1689,10 @@ describe('workbenchAgentSubscriber', () => {
       name: 'a2ui',
       value: {
         version: 'v0.9',
-        createSurface: { surfaceId, catalogId: 'https://dispute-workbench.internal/catalogs/v1.json' },
+        createSurface: {
+          surfaceId,
+          catalogId: 'https://dispute-workbench.internal/catalogs/v1.json',
+        },
       },
     };
     workbenchAgentSubscriber.onCustomEvent?.(fakeParams(createEvent));
@@ -1628,7 +1706,9 @@ describe('workbenchAgentSubscriber', () => {
     };
     const delta: StateDeltaEvent = {
       type: EventType.STATE_DELTA,
-      delta: [{ op: 'replace', path: '/evidenceReadiness', value: '2 of 4 required items present' }],
+      delta: [
+        { op: 'replace', path: '/evidenceReadiness', value: '2 of 4 required items present' },
+      ],
     };
     workbenchAgentSubscriber.onStateSnapshotEvent?.(fakeParams(snapshot));
     workbenchAgentSubscriber.onStateDeltaEvent?.(fakeParams(delta));
@@ -1677,7 +1757,10 @@ function applyA2uiMessage(message: { version: 'v0.9'; [key: string]: unknown }):
   }
 
   if ('updateComponents' in message) {
-    const payload = message.updateComponents as { surfaceId: string; components: A2uiComponentJson[] };
+    const payload = message.updateComponents as {
+      surfaceId: string;
+      components: A2uiComponentJson[];
+    };
     processor.processMessages([
       {
         version: 'v0.9',
@@ -1742,12 +1825,14 @@ git commit -m "Add AG-UI to store/A2UI bridge with idempotent createSurface hand
 ## Task 11: Mock demo script and mock agent
 
 **Files:**
+
 - Create: `src/mock/demoScript.ts`
 - Create: `src/mock/mockAgent.ts`
 - Test: `src/mock/demoScript.test.ts`
 - Test: `src/mock/mockAgent.test.ts`
 
 **Interfaces:**
+
 - Consumes: `DISPUTE_CATALOG_ID` (Task 8), `AgentSource` (Task 4).
 - Produces: `CASE_ID`, `THREAD_ID`, `SURFACE_ID`, `reviewRun`, `previewRun`, `approvalRun`, `cancelRun` (each a `DemoRun`); `MockAgent` class. Consumed by Task 12 (client).
 
@@ -1773,9 +1858,9 @@ describe('demoScript runs', () => {
   it('reviewRun includes interleaved case-review and policy progress lines in arrival order', () => {
     type LooseEvent = { type: string; name?: string; value?: { source?: string } };
     const sources = reviewRun.events
-      .map(scripted => scripted.event as LooseEvent)
-      .filter(event => event.type === EventType.CUSTOM && event.name === 'progress')
-      .map(event => event.value?.source);
+      .map((scripted) => scripted.event as LooseEvent)
+      .filter((event) => event.type === EventType.CUSTOM && event.name === 'progress')
+      .map((event) => event.value?.source);
 
     expect(sources).toContain('case-review');
     expect(sources).toContain('policy');
@@ -1785,29 +1870,33 @@ describe('demoScript runs', () => {
   it('reviewRun creates the surface and renders the decision view (DecisionCard as root)', () => {
     type LooseEvent = { type: string; name?: string; value?: Record<string, unknown> };
     const a2uiValues = reviewRun.events
-      .map(scripted => scripted.event as LooseEvent)
-      .filter(event => event.type === EventType.CUSTOM && event.name === 'a2ui')
-      .map(event => event.value as Record<string, unknown>);
+      .map((scripted) => scripted.event as LooseEvent)
+      .filter((event) => event.type === EventType.CUSTOM && event.name === 'a2ui')
+      .map((event) => event.value as Record<string, unknown>);
 
-    expect(a2uiValues.some(value => 'createSurface' in value)).toBe(true);
-    const updateComponents = a2uiValues.find(value => 'updateComponents' in value) as
-      | { updateComponents: { components: Array<{ id: string; component: string }> } }
-      | undefined;
+    expect(a2uiValues.some((value) => 'createSurface' in value)).toBe(true);
+    const updateComponents = a2uiValues.find((value) => 'updateComponents' in value) as
+      { updateComponents: { components: Array<{ id: string; component: string }> } } | undefined;
     expect(updateComponents).toBeDefined();
-    expect(updateComponents?.updateComponents.components[0]).toMatchObject({ id: 'root', component: 'DecisionCard' });
+    expect(updateComponents?.updateComponents.components[0]).toMatchObject({
+      id: 'root',
+      component: 'DecisionCard',
+    });
   });
 
   it('approvalRun ends on TaskCreatedCard and cancelRun reverts to DecisionCard', () => {
     type LooseEvent = { type: string; name?: string; value?: Record<string, unknown> };
     const lastComponents = (run: typeof approvalRun) =>
       run.events
-        .map(scripted => scripted.event as LooseEvent)
-        .filter(event => event.type === EventType.CUSTOM && event.name === 'a2ui')
-        .map(event => event.value as Record<string, unknown>)
-        .filter(value => 'updateComponents' in value)
+        .map((scripted) => scripted.event as LooseEvent)
+        .filter((event) => event.type === EventType.CUSTOM && event.name === 'a2ui')
+        .map((event) => event.value as Record<string, unknown>)
+        .filter((value) => 'updateComponents' in value)
         .pop() as { updateComponents: { components: Array<{ component: string }> } };
 
-    expect(lastComponents(approvalRun).updateComponents.components[0].component).toBe('TaskCreatedCard');
+    expect(lastComponents(approvalRun).updateComponents.components[0].component).toBe(
+      'TaskCreatedCard',
+    );
     expect(lastComponents(cancelRun).updateComponents.components[0].component).toBe('DecisionCard');
   });
 });
@@ -1907,7 +1996,10 @@ const taskCreatedComponents: A2uiComponentJson[] = [
 
 export const reviewRun: DemoRun = {
   events: [
-    { delayMs: 0, event: { type: EventType.RUN_STARTED, threadId: THREAD_ID, runId: 'run-review' } },
+    {
+      delayMs: 0,
+      event: { type: EventType.RUN_STARTED, threadId: THREAD_ID, runId: 'run-review' },
+    },
     { delayMs: 400, event: progress('orchestrator', 'Understanding dispute...') },
     { delayMs: 400, event: progress('orchestrator', 'Dispute type detected: Goods Not Received') },
     { delayMs: 400, event: progress('orchestrator', 'Preparing specialist review...') },
@@ -1922,18 +2014,32 @@ export const reviewRun: DemoRun = {
     { delayMs: 450, event: progress('case-review', 'Case file contains transaction record') },
     { delayMs: 400, event: progress('policy', 'Required evidence list identified') },
     { delayMs: 450, event: progress('case-review', 'Case file contains merchant response') },
-    { delayMs: 500, event: progress('case-review', 'No additional customer documents found in case file') },
-    { delayMs: 500, event: progress('orchestrator', 'Merging case facts with policy requirements...') },
-    { delayMs: 400, event: progress('orchestrator', 'Comparing available documents against required evidence...') },
+    {
+      delayMs: 500,
+      event: progress('case-review', 'No additional customer documents found in case file'),
+    },
+    {
+      delayMs: 500,
+      event: progress('orchestrator', 'Merging case facts with policy requirements...'),
+    },
+    {
+      delayMs: 400,
+      event: progress('orchestrator', 'Comparing available documents against required evidence...'),
+    },
     { delayMs: 400, event: progress('orchestrator', 'Missing customer declaration') },
     { delayMs: 400, event: progress('orchestrator', 'Missing delivery / non-delivery proof') },
     { delayMs: 400, event: progress('orchestrator', 'Calculating evidence readiness...') },
-    { delayMs: 0, event: { type: EventType.STATE_SNAPSHOT, snapshot: { evidenceReadiness: null } } },
+    {
+      delayMs: 0,
+      event: { type: EventType.STATE_SNAPSHOT, snapshot: { evidenceReadiness: null } },
+    },
     {
       delayMs: 300,
       event: {
         type: EventType.STATE_DELTA,
-        delta: [{ op: 'replace', path: '/evidenceReadiness', value: '2 of 4 required items present' }],
+        delta: [
+          { op: 'replace', path: '/evidenceReadiness', value: '2 of 4 required items present' },
+        ],
       },
     },
     { delayMs: 400, event: progress('orchestrator', 'Preparing decision view...') },
@@ -1941,7 +2047,11 @@ export const reviewRun: DemoRun = {
       delayMs: 400,
       event: a2ui({
         version: 'v0.9',
-        createSurface: { surfaceId: SURFACE_ID, catalogId: DISPUTE_CATALOG_ID, sendDataModel: false },
+        createSurface: {
+          surfaceId: SURFACE_ID,
+          catalogId: DISPUTE_CATALOG_ID,
+          sendDataModel: false,
+        },
       }),
     },
     {
@@ -1951,13 +2061,19 @@ export const reviewRun: DemoRun = {
         updateComponents: { surfaceId: SURFACE_ID, components: decisionViewComponents },
       }),
     },
-    { delayMs: 0, event: { type: EventType.RUN_FINISHED, threadId: THREAD_ID, runId: 'run-review' } },
+    {
+      delayMs: 0,
+      event: { type: EventType.RUN_FINISHED, threadId: THREAD_ID, runId: 'run-review' },
+    },
   ],
 };
 
 export const previewRun: DemoRun = {
   events: [
-    { delayMs: 0, event: { type: EventType.RUN_STARTED, threadId: THREAD_ID, runId: 'run-preview' } },
+    {
+      delayMs: 0,
+      event: { type: EventType.RUN_STARTED, threadId: THREAD_ID, runId: 'run-preview' },
+    },
     {
       delayMs: 400,
       event: a2ui({
@@ -1965,15 +2081,24 @@ export const previewRun: DemoRun = {
         updateComponents: { surfaceId: SURFACE_ID, components: approvalPreviewComponents },
       }),
     },
-    { delayMs: 0, event: { type: EventType.RUN_FINISHED, threadId: THREAD_ID, runId: 'run-preview' } },
+    {
+      delayMs: 0,
+      event: { type: EventType.RUN_FINISHED, threadId: THREAD_ID, runId: 'run-preview' },
+    },
   ],
 };
 
 export const approvalRun: DemoRun = {
   events: [
-    { delayMs: 0, event: { type: EventType.RUN_STARTED, threadId: THREAD_ID, runId: 'run-approval' } },
+    {
+      delayMs: 0,
+      event: { type: EventType.RUN_STARTED, threadId: THREAD_ID, runId: 'run-approval' },
+    },
     { delayMs: 400, event: progress('orchestrator', 'Creating evidence request task...') },
-    { delayMs: 400, event: progress('orchestrator', 'Updating case status to Pending Evidence...') },
+    {
+      delayMs: 400,
+      event: progress('orchestrator', 'Updating case status to Pending Evidence...'),
+    },
     { delayMs: 400, event: progress('orchestrator', 'Creating audit entry...') },
     { delayMs: 400, event: progress('orchestrator', 'Task created successfully.') },
     {
@@ -1983,13 +2108,19 @@ export const approvalRun: DemoRun = {
         updateComponents: { surfaceId: SURFACE_ID, components: taskCreatedComponents },
       }),
     },
-    { delayMs: 0, event: { type: EventType.RUN_FINISHED, threadId: THREAD_ID, runId: 'run-approval' } },
+    {
+      delayMs: 0,
+      event: { type: EventType.RUN_FINISHED, threadId: THREAD_ID, runId: 'run-approval' },
+    },
   ],
 };
 
 export const cancelRun: DemoRun = {
   events: [
-    { delayMs: 0, event: { type: EventType.RUN_STARTED, threadId: THREAD_ID, runId: 'run-cancel' } },
+    {
+      delayMs: 0,
+      event: { type: EventType.RUN_STARTED, threadId: THREAD_ID, runId: 'run-cancel' },
+    },
     {
       delayMs: 300,
       event: a2ui({
@@ -1997,7 +2128,10 @@ export const cancelRun: DemoRun = {
         updateComponents: { surfaceId: SURFACE_ID, components: decisionViewComponents },
       }),
     },
-    { delayMs: 0, event: { type: EventType.RUN_FINISHED, threadId: THREAD_ID, runId: 'run-cancel' } },
+    {
+      delayMs: 0,
+      event: { type: EventType.RUN_FINISHED, threadId: THREAD_ID, runId: 'run-cancel' },
+    },
   ],
 };
 ```
@@ -2073,7 +2207,14 @@ Expected: FAIL — `Cannot find module './mockAgent'`.
 
 ```ts
 import { EventType, type AgentSubscriber, type BaseEvent } from '@ag-ui/client';
-import { reviewRun, previewRun, approvalRun, cancelRun, THREAD_ID, type DemoRun } from './demoScript';
+import {
+  reviewRun,
+  previewRun,
+  approvalRun,
+  cancelRun,
+  THREAD_ID,
+  type DemoRun,
+} from './demoScript';
 
 interface MockRunParams {
   forwardedProps?: { a2uiAction?: { name?: string } };
@@ -2131,7 +2272,7 @@ export class MockAgent {
     this.subscribers.push(subscriber);
     return {
       unsubscribe: () => {
-        this.subscribers = this.subscribers.filter(s => s !== subscriber);
+        this.subscribers = this.subscribers.filter((s) => s !== subscriber);
       },
     };
   }
@@ -2177,9 +2318,11 @@ git commit -m "Add mock demo script (four runs) and MockAgent replay engine"
 ## Task 12: Live/mock client wiring
 
 **Files:**
+
 - Create: `src/agui/client.ts`
 
 **Interfaces:**
+
 - Consumes: `workbenchAgentSubscriber`, `resetBridgeState` (Task 10), `MockAgent` (Task 11), `useWorkbenchStore` (Task 9).
 - Produces: `startDemoCase(disputeText: string)`, `reconnect()` — consumed by Task 13 (panels).
 
@@ -2210,7 +2353,7 @@ let currentThreadId: string | null = null;
 // per page load), so its action listener is wired exactly once here rather
 // than per-run. Every A2UI button click becomes a new AG-UI run on the same
 // threadId, per design doc §3.4.
-useWorkbenchStore.getState().processor.model.onAction.subscribe(action => {
+useWorkbenchStore.getState().processor.model.onAction.subscribe((action) => {
   void agent?.runAgent({ forwardedProps: { a2uiAction: action } });
 });
 
@@ -2258,12 +2401,14 @@ git commit -m "Wire live/mock AG-UI agent selection and action-forwarding"
 ## Task 13: UI panels and app layout
 
 **Files:**
+
 - Create: `src/components/CaseIntakePanel.tsx`
 - Create: `src/components/LiveProgressPanel.tsx`
 - Create: `src/components/DecisionPanel.tsx`
 - Modify: `src/App.tsx` (replace the Task 1 placeholder)
 
 **Interfaces:**
+
 - Consumes: `useWorkbenchStore` (Task 9), `startDemoCase`/`reconnect` (Task 12), `AgentSource` (Task 4), `A2uiSurface` (`@a2ui/react/v0_9`).
 - Produces: the full three-zone workbench UI, consumed by Task 14's integration test.
 
@@ -2279,8 +2424,8 @@ const DEFAULT_DISPUTE_TEXT =
 
 export function CaseIntakePanel() {
   const [disputeText, setDisputeText] = useState(DEFAULT_DISPUTE_TEXT);
-  const caseId = useWorkbenchStore(state => state.caseId);
-  const connectionStatus = useWorkbenchStore(state => state.connectionStatus);
+  const caseId = useWorkbenchStore((state) => state.caseId);
+  const connectionStatus = useWorkbenchStore((state) => state.connectionStatus);
   const busy = connectionStatus === 'connecting' || connectionStatus === 'streaming';
 
   return (
@@ -2289,7 +2434,7 @@ export function CaseIntakePanel() {
       <textarea
         className="min-h-32 flex-1 resize-none rounded-md border border-slate-300 p-2 text-sm"
         value={disputeText}
-        onChange={event => setDisputeText(event.target.value)}
+        onChange={(event) => setDisputeText(event.target.value)}
         disabled={busy}
       />
       <button
@@ -2327,8 +2472,8 @@ const SOURCE_LABELS: Record<AgentSource, string> = {
 };
 
 export function LiveProgressPanel() {
-  const progressLines = useWorkbenchStore(state => state.progressLines);
-  const connectionStatus = useWorkbenchStore(state => state.connectionStatus);
+  const progressLines = useWorkbenchStore((state) => state.progressLines);
+  const connectionStatus = useWorkbenchStore((state) => state.connectionStatus);
   const containerRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
 
@@ -2360,9 +2505,11 @@ export function LiveProgressPanel() {
         onMouseLeave={() => setPaused(false)}
         className="flex-1 space-y-1.5 overflow-y-auto"
       >
-        {progressLines.map(line => (
+        {progressLines.map((line) => (
           <div key={line.id} className="flex items-start gap-2 text-sm">
-            <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${SOURCE_STYLES[line.source]}`}>
+            <span
+              className={`rounded px-1.5 py-0.5 text-xs font-medium ${SOURCE_STYLES[line.source]}`}
+            >
               {SOURCE_LABELS[line.source]}
             </span>
             <span className="text-slate-700">{line.text}</span>
@@ -2401,13 +2548,13 @@ import { A2uiSurface, type ReactComponentImplementation } from '@a2ui/react/v0_9
 import { useWorkbenchStore } from '../state/workbenchStore';
 
 export function DecisionPanel() {
-  const processor = useWorkbenchStore(state => state.processor);
+  const processor = useWorkbenchStore((state) => state.processor);
   const [surface, setSurface] = useState<SurfaceModel<ReactComponentImplementation> | undefined>(
     () => processor.model.surfacesMap.values().next().value,
   );
 
   useEffect(() => {
-    const createdSub = processor.onSurfaceCreated(created => setSurface(created));
+    const createdSub = processor.onSurfaceCreated((created) => setSurface(created));
     const deletedSub = processor.onSurfaceDeleted(() => setSurface(undefined));
     return () => {
       createdSub.unsubscribe();
@@ -2417,7 +2564,9 @@ export function DecisionPanel() {
 
   return (
     <section className="flex h-full flex-col gap-3 bg-white p-4">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Decision panel</h2>
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        Decision panel
+      </h2>
       {surface ? (
         <A2uiSurface surface={surface} />
       ) : (
@@ -2468,9 +2617,11 @@ git commit -m "Add three-zone workbench layout and wire it to the store/client"
 ## Task 14: End-to-end mock replay integration test
 
 **Files:**
+
 - Test: `src/test/integration.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `App` (Task 13), the full mock stack (Tasks 9–12).
 - Produces: one integration test asserting the complete demo script (review → preview → approval) ends with `TaskCreatedCard` visible in the DOM.
 
@@ -2537,14 +2688,16 @@ git commit -m "Add end-to-end mock-script replay integration test"
 ## Task 15: README
 
 **Files:**
+
 - Create: `README.md`
 
 **Interfaces:**
+
 - Produces: the project's documentation — what it is, how to run mock mode, how to point at a real backend, the agent-source labeling contract, the catalog component schema table, and the pinned A2UI spec version note.
 
 - [ ] **Step 1: Write `README.md`**
 
-```markdown
+````markdown
 # agentic-dispute-workbench-ui
 
 The operations UI for a bank's Dispute Resolution Workbench. An ops analyst submits a
@@ -2570,6 +2723,7 @@ Mock mode is the default and needs no backend.
 npm install
 npm run dev
 ```
+````
 
 Open the printed local URL, click **Review Dispute**, and the app replays the canonical
 demo scenario: a live progress stream from the Orchestrator, Case Review Agent, and
@@ -2623,13 +2777,13 @@ Closed catalog (catalog id `https://dispute-workbench.internal/catalogs/v1.json`
 other `component` type is rendered as a safe fallback box with the raw JSON, never a
 crash.
 
-| Component | Props | Notes |
-|---|---|---|
-| `DecisionCard` | `status`, `disputeType`, `evidenceReadiness`, `recommendedAction` (all dynamic strings); `checklistId`, `actionsId` (optional component ids) | Always the surface root; nests `EvidenceChecklist`/`NextActions` via A2UI's `buildChild` composition — see design doc §4.1 addendum. |
-| `EvidenceChecklist` | `items: { label: string, present: boolean }[]` | |
-| `NextActions` | `actions: { id: string, label: string }[]` | Each button dispatches an A2UI action named after the item's `id`. |
-| `ApprovalPreview` | `caseId`, `newCaseStatus`, `actionAfterApproval` (dynamic strings); `missingItems: string[]`; `onApprove`, `onEdit`, `onCancel` (A2UI actions) | The human-approval gate — visually distinguished, "nothing written yet." Cancel dispatches a real action (a cancel run), it does not revert client-side. |
-| `TaskCreatedCard` | `taskId`, `caseStatus`, `auditEntry`, `nextOwner` (all dynamic strings) | Terminal success state. |
+| Component           | Props                                                                                                                                          | Notes                                                                                                                                                    |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DecisionCard`      | `status`, `disputeType`, `evidenceReadiness`, `recommendedAction` (all dynamic strings); `checklistId`, `actionsId` (optional component ids)   | Always the surface root; nests `EvidenceChecklist`/`NextActions` via A2UI's `buildChild` composition — see design doc §4.1 addendum.                     |
+| `EvidenceChecklist` | `items: { label: string, present: boolean }[]`                                                                                                 |                                                                                                                                                          |
+| `NextActions`       | `actions: { id: string, label: string }[]`                                                                                                     | Each button dispatches an A2UI action named after the item's `id`.                                                                                       |
+| `ApprovalPreview`   | `caseId`, `newCaseStatus`, `actionAfterApproval` (dynamic strings); `missingItems: string[]`; `onApprove`, `onEdit`, `onCancel` (A2UI actions) | The human-approval gate — visually distinguished, "nothing written yet." Cancel dispatches a real action (a cancel run), it does not revert client-side. |
+| `TaskCreatedCard`   | `taskId`, `caseStatus`, `auditEntry`, `nextOwner` (all dynamic strings)                                                                        | Terminal success state.                                                                                                                                  |
 
 **A2UI spec version:** pinned to **v0.9** (spec evolving) — `@a2ui/react@0.10.1` /
 `@a2ui/web_core@0.10.4`.
@@ -2645,7 +2799,8 @@ npm run lint          # ESLint
 npm run format        # Prettier, write mode
 npm run typecheck    # tsc -b --noEmit
 ```
-```
+
+````
 
 - [ ] **Step 2: Verify the README's code fences and links are accurate**
 
@@ -2656,7 +2811,7 @@ Manually confirm every file path referenced in the README (`docs/superpowers/spe
 ```bash
 git add README.md
 git commit -m "Add README: mock mode, backend wiring, wire contract, catalog schema table"
-```
+````
 
 ---
 

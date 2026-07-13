@@ -13,12 +13,12 @@ documented here is what that backend must implement.
 
 ## 2. Package architecture
 
-| Concern | Package | Version | Role |
-|---|---|---|---|
-| AG-UI protocol types | `@ag-ui/core` | `0.0.57` | Event/schema types (pinned exact) |
-| AG-UI SSE client | `@ag-ui/client` | `0.0.57` | `HttpAgent` — headless, subscriber-pattern SSE client |
-| A2UI protocol core | `@a2ui/web_core` | `0.10.4` | `Catalog`, `MessageProcessor`, schemas (v0.9) |
-| A2UI React renderer | `@a2ui/react` | `0.10.1` | `A2uiSurface`, `createComponentImplementation` |
+| Concern              | Package          | Version  | Role                                                  |
+| -------------------- | ---------------- | -------- | ----------------------------------------------------- |
+| AG-UI protocol types | `@ag-ui/core`    | `0.0.57` | Event/schema types (pinned exact)                     |
+| AG-UI SSE client     | `@ag-ui/client`  | `0.0.57` | `HttpAgent` — headless, subscriber-pattern SSE client |
+| A2UI protocol core   | `@a2ui/web_core` | `0.10.4` | `Catalog`, `MessageProcessor`, schemas (v0.9)         |
+| A2UI React renderer  | `@a2ui/react`    | `0.10.1` | `A2uiSurface`, `createComponentImplementation`        |
 
 **Explicitly not used:** `@copilotkit/react-core`, `@copilotkit/a2ui-renderer`,
 `CopilotSidebar`/`CopilotChat`. Investigation of the current (2026-07) CopilotKit A2UI
@@ -28,6 +28,7 @@ extension API is undocumented beyond a `theme` option. This conflicts with the
 no-chat-UI requirement and carries unverified extensibility risk.
 
 Instead we use the two real upstream protocol libraries directly:
+
 - `@ag-ui/client`'s `HttpAgent` **is** "the AG-UI client" (published by the same
   CopilotKit/ag-ui-protocol org, protocol-only, no chat UI attached).
 - `@a2ui/react` + `@a2ui/web_core` **is** the official A2UI project's own React
@@ -77,9 +78,15 @@ decision panel's A2UI surface exists.
 
 **Progress lines — [convention — frozen]:** carried as `CUSTOM` events, not
 `TEXT_MESSAGE_*`:
+
 ```json
-{"type": "CUSTOM", "name": "progress", "value": {"source": "case-review", "text": "Checking transaction status..."}}
+{
+  "type": "CUSTOM",
+  "name": "progress",
+  "value": { "source": "case-review", "text": "Checking transaction status..." }
+}
 ```
+
 `source` is one of `"orchestrator" | "case-review" | "policy"`.
 
 **Why not `TEXT_MESSAGE_START/CONTENT/END` with a `source` field appended:** the
@@ -94,9 +101,11 @@ once, not twice. This is the frozen decision — do not reintroduce a `source`-o
 ### 3.2 A2UI payloads over AG-UI
 
 **[convention — frozen]** A2UI server→client messages ride inside `CUSTOM` events:
+
 ```json
 {"type": "CUSTOM", "name": "a2ui", "value": {"version": "v0.9", "updateComponents": {...}}}
 ```
+
 `value` is a verified v0.9 `A2uiMessage` **[spec]** (`createSurface` |
 `updateComponents` | `updateDataModel` | `deleteSurface`, from
 `@a2ui/web_core/v0_9` schemas — see §4 for exact shapes and real examples).
@@ -134,16 +143,28 @@ This has consequences the backend must honor:
 ### 3.4 A2UI client actions (button clicks)
 
 **[spec]** shape (`@a2ui/web_core/v0_9` `client-to-server.ts`):
+
 ```json
-{"version": "v0.9", "action": {"name": "approve_task_creation", "surfaceId": "case-D-10291", "sourceComponentId": "approve-btn", "timestamp": "2026-07-13T10:40:00Z", "context": {}}}
+{
+  "version": "v0.9",
+  "action": {
+    "name": "approve_task_creation",
+    "surfaceId": "case-D-10291",
+    "sourceComponentId": "approve-btn",
+    "timestamp": "2026-07-13T10:40:00Z",
+    "context": {}
+  }
+}
 ```
 
 **[convention — frozen]** Transport: A2UI itself assumes a persistent bidirectional
 channel, which a discrete-run AG-UI SSE model doesn't have. We send the action by
 starting a **new** AG-UI run on the **same `threadId`**:
+
 ```ts
 agent.runAgent({ threadId, forwardedProps: { a2uiAction: <A2uiClientAction> } })
 ```
+
 `forwardedProps: any` is a verified field on `RunAgentInput` **[spec]**, the standard
 AG-UI escape hatch for client→agent app-specific data.
 
@@ -183,22 +204,31 @@ fetched, just an identifier string per the `catalogId` field's contract).
 Built with the real `@a2ui/web_core/v0_9` `Catalog` class and
 `@a2ui/react/v0_9` `createComponentImplementation`, matching the verified flat
 `updateComponents` component shape:
+
 ```json
-{"id": "decision-1", "component": "DecisionCard", "status": "Needs More Evidence", "disputeType": "Goods Not Received", "evidenceReadiness": "2 of 4 required items present", "recommendedAction": "Create evidence request task"}
+{
+  "id": "decision-1",
+  "component": "DecisionCard",
+  "status": "Needs More Evidence",
+  "disputeType": "Goods Not Received",
+  "evidenceReadiness": "2 of 4 required items present",
+  "recommendedAction": "Create evidence request task"
+}
 ```
+
 (Structurally identical to the official `07_task-card.json` example's flat
 `{id, component, ...props}` shape — this is what "A2UI-v0.9-conformant, not merely
 plausible" means in practice.)
 
 ### 4.1 Components (exactly these five)
 
-| Component | Props |
-|---|---|
-| `DecisionCard` | `status`, `disputeType`, `evidenceReadiness`, `recommendedAction` (all `DynamicString`) |
-| `EvidenceChecklist` | `items: {label: DynamicString, present: DynamicBoolean}[]` |
-| `NextActions` | `actions: {id: string, label: DynamicString}[]`, each dispatches `Action` (`event.name = action.id`) |
-| `ApprovalPreview` | `caseId`, `newCaseStatus`, `missingItems: DynamicString[]`, `actionAfterApproval`; three `Action` props: `onApprove`, `onEdit`, `onCancel` |
-| `TaskCreatedCard` | `taskId`, `caseStatus`, `auditEntry`, `nextOwner` (all `DynamicString`) |
+| Component           | Props                                                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DecisionCard`      | `status`, `disputeType`, `evidenceReadiness`, `recommendedAction` (all `DynamicString`)                                                    |
+| `EvidenceChecklist` | `items: {label: DynamicString, present: DynamicBoolean}[]`                                                                                 |
+| `NextActions`       | `actions: {id: string, label: DynamicString}[]`, each dispatches `Action` (`event.name = action.id`)                                       |
+| `ApprovalPreview`   | `caseId`, `newCaseStatus`, `missingItems: DynamicString[]`, `actionAfterApproval`; three `Action` props: `onApprove`, `onEdit`, `onCancel` |
+| `TaskCreatedCard`   | `taskId`, `caseStatus`, `auditEntry`, `nextOwner` (all `DynamicString`)                                                                    |
 
 `ApprovalPreview` is visually distinguished (border + icon) as the human-approval gate
 — "nothing has been written yet."
