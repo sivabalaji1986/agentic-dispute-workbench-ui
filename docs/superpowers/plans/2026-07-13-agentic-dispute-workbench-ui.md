@@ -1095,7 +1095,7 @@ export const ApprovalPreview = createComponentImplementation(ApprovalPreviewApi,
       </dl>
       {props.missingItems.length > 0 && (
         <ul className="mt-2 list-inside list-disc text-sm text-slate-700">
-          {props.missingItems.map((item, index) => (
+          {props.missingItems.map((item: string, index: number) => (
             <li key={index}>{item}</li>
           ))}
         </ul>
