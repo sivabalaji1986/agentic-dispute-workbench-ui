@@ -2319,12 +2319,23 @@ git commit -m "Add mock demo script (four runs) and MockAgent replay engine"
 
 **Files:**
 
+- Create: `src/vite-env.d.ts`
 - Create: `src/agui/client.ts`
 
 **Interfaces:**
 
 - Consumes: `workbenchAgentSubscriber`, `resetBridgeState` (Task 10), `MockAgent` (Task 11), `useWorkbenchStore` (Task 9).
 - Produces: `startDemoCase(disputeText: string)`, `reconnect()` — consumed by Task 13 (panels).
+
+- [ ] **Step 0: Create `src/vite-env.d.ts`**
+
+Task 1's scaffold omitted Vite's standard triple-slash reference that types
+`import.meta.env`, and no task needed it until this one — this is the
+standard Vite scaffold file, not a workaround:
+
+```ts
+/// <reference types="vite/client" />
+```
 
 - [ ] **Step 1: Implement `client.ts`**
 
