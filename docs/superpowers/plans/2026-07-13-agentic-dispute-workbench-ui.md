@@ -2139,7 +2139,7 @@ export const cancelRun: DemoRun = {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npm run test -- src/mock/demoScript.test.ts`
-Expected: `6 passed` (4 from `it.each` + 2 more).
+Expected: `7 passed` (4 from `it.each` + 3 more).
 
 - [ ] **Step 5: Write the failing test for `MockAgent`**
 
