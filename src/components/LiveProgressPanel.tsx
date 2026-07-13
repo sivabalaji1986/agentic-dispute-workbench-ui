@@ -58,7 +58,7 @@ export function LiveProgressPanel() {
         className="flex-1 space-y-1.5 overflow-y-auto"
       >
         {progressLines.map((line) => (
-          <div key={line.id} className="flex items-start gap-2 text-sm">
+          <div key={line.id} data-testid="progress-line" className="flex items-start gap-2 text-sm">
             <span
               className={`rounded px-1.5 py-0.5 text-xs font-medium ${SOURCE_STYLES[line.source]}`}
             >

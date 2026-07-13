@@ -46,5 +46,29 @@ describe('full demo script replay (mock mode)', () => {
     // stall under frozen fake timers absent concurrent advancement.
     expect(screen.getByText('Task created')).toBeInTheDocument();
     expect(screen.getByText('EVID-88421')).toBeInTheDocument();
+
+    // The review run's opening line must appear exactly once across the whole
+    // flow — regression guard for the mock-branching bug where an
+    // unrecognized action id silently replayed the entire review run.
+    expect(screen.getAllByText('Understanding dispute...')).toHaveLength(1);
+  });
+
+  it('does not replay the review run when an out-of-scope NextActions button is clicked', async () => {
+    const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime });
+    render(<App />);
+
+    await Promise.all([
+      user.click(screen.getByRole('button', { name: 'Review Dispute' })),
+      vi.advanceTimersByTimeAsync(20000),
+    ]);
+
+    const lineCountBefore = screen.getAllByTestId('progress-line').length;
+
+    const escalateButton = screen.getByRole('button', { name: 'Escalate to Reviewer' });
+    await Promise.all([user.click(escalateButton), vi.advanceTimersByTimeAsync(1000)]);
+
+    expect(screen.getAllByTestId('progress-line')).toHaveLength(lineCountBefore);
+    expect(screen.getByText('Escalate to Reviewer is not in demo scope')).toBeInTheDocument();
+    expect(screen.getAllByText('Understanding dispute...')).toHaveLength(1);
   });
 });
