@@ -2658,20 +2658,29 @@ describe('full demo script replay (mock mode)', () => {
     const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime });
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: 'Review Dispute' }));
-    await vi.advanceTimersByTimeAsync(20000);
+    // NOTE: `await user.click(...)` followed by a separate `await
+    // vi.advanceTimersByTimeAsync(...)` deadlocks here: userEvent v14's click
+    // implementation awaits a step that only resolves once fake timers are
+    // advanced, so awaiting the click to completion before advancing timers
+    // never returns. Firing both concurrently (below) lets
+    // advanceTimersByTimeAsync pump the timer queue while userEvent's click
+    // is in flight, which unblocks it. This is a userEvent+fake-timers
+    // interaction workaround only; the click and the awaited timer window are
+    // otherwise identical to the sequential form described above.
+    await Promise.all([
+      user.click(screen.getByRole('button', { name: 'Review Dispute' })),
+      vi.advanceTimersByTimeAsync(20000),
+    ]);
 
-    const createTaskButton = await screen.findByRole('button', {
+    const createTaskButton = screen.getByRole('button', {
       name: 'Create Evidence Request Task',
     });
-    await user.click(createTaskButton);
-    await vi.advanceTimersByTimeAsync(5000);
+    await Promise.all([user.click(createTaskButton), vi.advanceTimersByTimeAsync(5000)]);
 
-    const approveButton = await screen.findByRole('button', { name: 'Approve Task Creation' });
-    await user.click(approveButton);
-    await vi.advanceTimersByTimeAsync(10000);
+    const approveButton = screen.getByRole('button', { name: 'Approve Task Creation' });
+    await Promise.all([user.click(approveButton), vi.advanceTimersByTimeAsync(10000)]);
 
-    expect(await screen.findByText('Task created')).toBeInTheDocument();
+    expect(screen.getByText('Task created')).toBeInTheDocument();
     expect(screen.getByText('EVID-88421')).toBeInTheDocument();
   });
 });
