@@ -39,6 +39,11 @@ describe('full demo script replay (mock mode)', () => {
     const approveButton = screen.getByRole('button', { name: 'Approve Task Creation' });
     await Promise.all([user.click(approveButton), vi.advanceTimersByTimeAsync(10000)]);
 
+    // Same sync-query pattern as the two `getByRole` swaps above, for the same
+    // reason: by the time this final `Promise.all` resolves, the approval
+    // run's DOM updates have already flushed, so a synchronous query is
+    // sufficient and `findByText`'s own internal polling would otherwise also
+    // stall under frozen fake timers absent concurrent advancement.
     expect(screen.getByText('Task created')).toBeInTheDocument();
     expect(screen.getByText('EVID-88421')).toBeInTheDocument();
   });
