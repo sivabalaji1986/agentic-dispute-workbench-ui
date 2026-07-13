@@ -2820,8 +2820,6 @@ npm run format        # Prettier, write mode
 npm run typecheck    # tsc -b --noEmit
 ```
 
-````
-
 - [ ] **Step 2: Verify the README's code fences and links are accurate**
 
 Manually confirm every file path referenced in the README (`docs/superpowers/specs/2026-07-13-agentic-dispute-workbench-ui-design.md`, `src/agui/client.ts`, `.env.example`) exists in the repo at that exact path.
@@ -2831,7 +2829,7 @@ Manually confirm every file path referenced in the README (`docs/superpowers/spe
 ```bash
 git add README.md
 git commit -m "Add README: mock mode, backend wiring, wire contract, catalog schema table"
-````
+```
 
 ---
 
