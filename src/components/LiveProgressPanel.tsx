@@ -18,6 +18,7 @@ const SOURCE_LABELS: Record<AgentSource, string> = {
 export function LiveProgressPanel() {
   const progressLines = useWorkbenchStore((state) => state.progressLines);
   const connectionStatus = useWorkbenchStore((state) => state.connectionStatus);
+  const evidenceReadiness = useWorkbenchStore((state) => state.evidenceReadiness);
   const containerRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
 
@@ -32,7 +33,14 @@ export function LiveProgressPanel() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Live agent progress
         </h2>
-        <span className="text-xs font-medium text-slate-500">{statusLabel(connectionStatus)}</span>
+        <div className="flex items-center gap-2">
+          {evidenceReadiness && (
+            <span className="rounded bg-slate-200 px-1.5 py-0.5 text-xs font-medium text-slate-700">
+              {evidenceReadiness}
+            </span>
+          )}
+          <span className="text-xs font-medium text-slate-500">{statusLabel(connectionStatus)}</span>
+        </div>
       </div>
       {connectionStatus === 'disconnected' && (
         <button

@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { createComponentImplementation } from '@a2ui/react/v0_9';
 import { ApprovalPreviewApi } from './schemas';
 
 export const ApprovalPreview = createComponentImplementation(ApprovalPreviewApi, ({ props }) => {
+  const [showEditNotice, setShowEditNotice] = useState(false);
   return (
     <div className="rounded-lg border-2 border-amber-500 bg-amber-50 p-4 shadow-sm">
       <div className="flex items-center gap-2">
@@ -44,7 +46,7 @@ export const ApprovalPreview = createComponentImplementation(ApprovalPreviewApi,
         <button
           type="button"
           className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          onClick={props.onEdit}
+          onClick={() => setShowEditNotice(true)}
         >
           Edit
         </button>
@@ -56,6 +58,9 @@ export const ApprovalPreview = createComponentImplementation(ApprovalPreviewApi,
           Cancel
         </button>
       </div>
+      {showEditNotice && (
+        <p className="mt-2 text-xs text-amber-700">Edit flow not in demo scope</p>
+      )}
     </div>
   );
 });
