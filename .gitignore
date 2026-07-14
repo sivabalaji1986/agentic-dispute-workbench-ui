@@ -5,4 +5,4 @@ dist-ssr
 .env
 .env.*.local
 *.tsbuildinfo
-tmp
+tmp.worktrees/
