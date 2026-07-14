@@ -241,6 +241,13 @@ compatibility with v1.0) — `@a2ui/react@0.10.1` / `@a2ui/web_core@0.10.4`.
 `@ag-ui/client`/`@ag-ui/core@0.0.57`. All dependency versions in `package.json` are
 pinned exact, not range-matched.
 
+**Captured-stream contract fixtures:** `src/test/fixtures/` holds one AG-UI event
+per line (NDJSON), replayed in `src/test/fixtures/contract.test.ts` through the
+same bridge/validation code path the live and mock agents use — a
+cross-language contract test for the future Java backend. The four
+`*-success.ndjson` fixtures are generated from `src/mock/demoScript.ts` via
+`npm run fixtures:regen`; see `src/test/fixtures/README.md` for the rest.
+
 ## Development
 
 ```bash
