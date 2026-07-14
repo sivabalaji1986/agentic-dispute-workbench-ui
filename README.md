@@ -1,5 +1,8 @@
 # agentic-dispute-workbench-ui
 
+[![CI](https://github.com/sivabalaji1986/agentic-dispute-workbench-ui/actions/workflows/ci.yml/badge.svg)](https://github.com/sivabalaji1986/agentic-dispute-workbench-ui/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 ## What this is
 
 Dispute ops today means an analyst alt-tabbing between a case system, a policy PDF, and
@@ -62,7 +65,11 @@ JSON —
   {
     "id": "next-actions",
     "component": "NextActions",
-    "actions": [{ "id": "create_evidence_request_task", "label": "Create Evidence Request Task" }]
+    "actions": [
+      { "id": "create_evidence_request_task", "label": "Create Evidence Request Task" },
+      { "id": "escalate_to_reviewer", "label": "Escalate to Reviewer" },
+      { "id": "save_case_note", "label": "Save Case Note" }
+    ]
   }
 ]
 ```
@@ -77,16 +84,16 @@ Three flat, sibling entries in one `updateComponents` call — never nested obje
 [Contract notes](#contract-notes-for-backend-implementers) for why this shape is frozen.
 
 **A2A and MCP happen entirely backend-side — this frontend has no awareness of either.**
-A2A is the protocol the orchestrator presumably uses to talk to the Case Review and
-Policy specialist agents; from here, that's invisible except as an _effect_: the CASE
+A2A is the protocol the orchestrator uses to delegate to the Case Review and Policy
+specialist agents; MCP is how it calls the case system during the write phase — both by
+design, per the platform spec. From here, both are visible only as _effects_: the CASE
 REVIEW and POLICY lines interleaving on the timeline are what an A2A fan-out looks like
-from the outside. MCP is presumably how the orchestrator calls tools against the case
-system during the write phase; from here, that's also only visible as an effect — the
-plain-language progress lines during approval ("Creating evidence request task...",
-"Creating audit entry...") are a business-readable narration of what are almost
-certainly MCP tool calls, not a rendering of the calls themselves. This frontend
-intentionally has no MCP client, no A2A client, and no data model for either — if a
-future requirement needs one, that's new scope, not something implied by what's here.
+from the outside, and the plain-language progress lines during approval ("Creating
+evidence request task...", "Creating audit entry...") are a business-readable narration
+of the orchestrator's MCP tool calls, not a rendering of the calls themselves. This
+frontend intentionally has no MCP client, no A2A client, and no data model for either —
+if a future requirement needs one, that's new scope, not something implied by what's
+here.
 
 ## The flow
 
