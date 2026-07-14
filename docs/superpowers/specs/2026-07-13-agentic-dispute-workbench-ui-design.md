@@ -259,13 +259,13 @@ the backend may send, but the client intentionally never dispatches them — see
 
 ### 4.1 Components (exactly these five)
 
-| Component           | Props                                                                                                                                        |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Component           | Props                                                                                                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DecisionCard`      | `status`, `disputeType`, `evidenceReadiness`, `recommendedAction` (all `DynamicString`); `checklistId`, `actionsId` (optional `ComponentId` — see Composition below) |
-| `EvidenceChecklist` | `items: {label: DynamicString, present: DynamicBoolean}[]`                                                                                     |
-| `NextActions`       | `actions: {id: string, label: DynamicString}[]`, each dispatches `Action` (`event.name = action.id`) — except two reserved out-of-scope ids, see below |
-| `ApprovalPreview`   | `caseId`, `newCaseStatus`, `missingItems: DynamicString[]`, `actionAfterApproval`; three `Action` props: `onApprove`, `onEdit`, `onCancel`    |
-| `TaskCreatedCard`   | `taskId`, `caseStatus`, `auditEntry`, `nextOwner` (all `DynamicString`)                                                                        |
+| `EvidenceChecklist` | `items: {label: DynamicString, present: DynamicBoolean}[]`                                                                                                           |
+| `NextActions`       | `actions: {id: string, label: DynamicString}[]`, each dispatches `Action` (`event.name = action.id`) — except two reserved out-of-scope ids, see below               |
+| `ApprovalPreview`   | `caseId`, `newCaseStatus`, `missingItems: DynamicString[]`, `actionAfterApproval`; three `Action` props: `onApprove`, `onEdit`, `onCancel`                           |
+| `TaskCreatedCard`   | `taskId`, `caseStatus`, `auditEntry`, `nextOwner` (all `DynamicString`)                                                                                              |
 
 `ApprovalPreview` is visually distinguished (border + icon) as the human-approval gate
 — "nothing has been written yet."

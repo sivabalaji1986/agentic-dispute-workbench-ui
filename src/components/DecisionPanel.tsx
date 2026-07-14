@@ -37,14 +37,17 @@ export function DecisionPanel() {
 
 function DocumentOutline() {
   return (
-    <svg
-      aria-hidden
-      width="64"
-      height="80"
-      viewBox="0 0 64 80"
-      className="text-ink/15"
-    >
-      <rect x="1" y="1" width="62" height="78" rx="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+    <svg aria-hidden width="64" height="80" viewBox="0 0 64 80" className="text-ink/15">
+      <rect
+        x="1"
+        y="1"
+        width="62"
+        height="78"
+        rx="3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
       <line x1="12" y1="20" x2="52" y2="20" stroke="currentColor" strokeWidth="1.5" />
       <line x1="12" y1="32" x2="52" y2="32" stroke="currentColor" strokeWidth="1.5" />
       <line x1="12" y1="44" x2="40" y2="44" stroke="currentColor" strokeWidth="1.5" />
