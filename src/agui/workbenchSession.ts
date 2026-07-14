@@ -5,7 +5,7 @@ import { HttpAgentAdapter } from './httpAgentAdapter';
 import { createWorkbenchAgentSubscriber } from './bridge';
 import { useWorkbenchStore } from '../state/workbenchStore';
 import { disputeCatalog } from '../components/catalog/catalogInstance';
-import { validateForwardedAction, logValidationFailure } from './validation';
+import { validateForwardedAction, logValidationFailure, type ValidationFailure } from './validation';
 import type { AguiLikeAgent } from './types';
 
 const isMock = import.meta.env.VITE_MOCK !== 'false';
@@ -28,6 +28,7 @@ export class WorkbenchSession {
   private agentSubscription: { unsubscribe: () => void } | null = null;
   private actionSubscription: { unsubscribe: () => void } | null = null;
   private readonly createAgent: () => AguiLikeAgent;
+  private lastDispatchedActionId: string | undefined;
 
   constructor(threadId: string, opts: { agentFactory?: () => AguiLikeAgent } = {}) {
     this.threadId = threadId;
@@ -36,10 +37,31 @@ export class WorkbenchSession {
     this.agent = this.createAgent();
   }
 
+  private onProtocolError = (failure: ValidationFailure): void => {
+    logValidationFailure(failure);
+    useWorkbenchStore.getState().setProtocolError({
+      code:
+        failure.eventType === 'a2ui' && failure.issuePath === 'version'
+          ? 'unsupported_a2ui_version'
+          : 'protocol_error',
+      title: 'Protocol error',
+      message: 'The server sent a payload this client could not understand.',
+      retryable: false,
+    });
+  };
+
+  private subscribeAgent(): void {
+    const subscriber = createWorkbenchAgentSubscriber(
+      this.processor,
+      this.onProtocolError,
+      () => this.lastDispatchedActionId,
+    );
+    this.agentSubscription = this.agent.subscribe(subscriber);
+  }
+
   start(): void {
     useWorkbenchStore.getState().setProcessor(this.processor);
-    const subscriber = createWorkbenchAgentSubscriber(this.processor);
-    this.agentSubscription = this.agent.subscribe(subscriber);
+    this.subscribeAgent();
     this.actionSubscription = this.processor.model.onAction.subscribe((action) => {
       const validated = validateForwardedAction(action);
       if (!validated.success) {
@@ -48,18 +70,30 @@ export class WorkbenchSession {
       }
       this.dispatchAction(validated.data);
     });
-    void this.agent.runAgent({});
+    this.lastDispatchedActionId = undefined;
+    this.agent.runAgent({}).catch((error: Error) => {
+      useWorkbenchStore.getState().setTransportError({
+        code: 'backend_unreachable',
+        title: 'Could not reach the orchestrator',
+        message: error.message || 'The backend did not respond to the initial request.',
+        retryable: true,
+      });
+      useWorkbenchStore.getState().setConnectionStatus('failed');
+    });
   }
 
   dispatchAction(a2uiAction: unknown): void {
+    this.lastDispatchedActionId =
+      typeof a2uiAction === 'object' && a2uiAction !== null && 'name' in a2uiAction
+        ? String((a2uiAction as { name: unknown }).name)
+        : undefined;
     void this.agent.runAgent({ forwardedProps: { a2uiAction } });
   }
 
   reconnect(): void {
     this.agentSubscription?.unsubscribe();
     this.agent = this.createAgent();
-    const subscriber = createWorkbenchAgentSubscriber(this.processor);
-    this.agentSubscription = this.agent.subscribe(subscriber);
+    this.subscribeAgent();
     useWorkbenchStore.getState().setConnectionStatus('connecting');
     void this.agent.runAgent({});
   }

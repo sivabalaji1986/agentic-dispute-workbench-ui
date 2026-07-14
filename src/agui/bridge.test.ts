@@ -21,14 +21,20 @@ function fakeParams<E>(event: E) {
 describe('createWorkbenchAgentSubscriber', () => {
   let processor: MessageProcessor<never>;
   let protocolErrors: ValidationFailure[];
+  let lastDispatchedActionId: string | undefined;
   let workbenchAgentSubscriber: ReturnType<typeof createWorkbenchAgentSubscriber>;
 
   beforeEach(() => {
     processor = new MessageProcessor([disputeCatalog]) as never;
     protocolErrors = [];
-    workbenchAgentSubscriber = createWorkbenchAgentSubscriber(processor, (failure) => {
-      protocolErrors.push(failure);
-    });
+    lastDispatchedActionId = undefined;
+    workbenchAgentSubscriber = createWorkbenchAgentSubscriber(
+      processor,
+      (failure) => {
+        protocolErrors.push(failure);
+      },
+      () => lastDispatchedActionId,
+    );
     useWorkbenchStore.setState({
       caseId: 'D-10291',
       threadId: 't-1',
@@ -36,9 +42,38 @@ describe('createWorkbenchAgentSubscriber', () => {
       connectionStatus: 'idle',
       progressLines: [],
       evidenceReadiness: null,
+      transportError: null,
+      protocolError: null,
       processor: processor as never,
     });
   });
+
+  function setRootComponent(surfaceId: string, component: string, props: Record<string, unknown>) {
+    const createEvent: CustomEvent = {
+      type: EventType.CUSTOM,
+      name: 'a2ui',
+      value: {
+        version: 'v0.9',
+        createSurface: {
+          surfaceId,
+          catalogId: 'https://dispute-workbench.internal/catalogs/v1.json',
+        },
+      },
+    };
+    const updateEvent: CustomEvent = {
+      type: EventType.CUSTOM,
+      name: 'a2ui',
+      value: {
+        version: 'v0.9',
+        updateComponents: {
+          surfaceId,
+          components: [{ id: 'root', component, ...props }],
+        },
+      },
+    };
+    workbenchAgentSubscriber.onCustomEvent?.(fakeParams(createEvent));
+    workbenchAgentSubscriber.onCustomEvent?.(fakeParams(updateEvent));
+  }
 
   it('sets connection status and runId on RUN_STARTED', () => {
     const event: RunStartedEvent = { type: EventType.RUN_STARTED, threadId: 't-1', runId: 'run-1' };
@@ -47,7 +82,7 @@ describe('createWorkbenchAgentSubscriber', () => {
     expect(useWorkbenchStore.getState().runId).toBe('run-1');
   });
 
-  it('sets connection status to finished on RUN_FINISHED', () => {
+  function fireRunFinished(): void {
     const event: RunFinishedEvent = {
       type: EventType.RUN_FINISHED,
       threadId: 't-1',
@@ -57,13 +92,91 @@ describe('createWorkbenchAgentSubscriber', () => {
       ...fakeParams(event),
       outcome: 'success',
     } as never);
-    expect(useWorkbenchStore.getState().connectionStatus).toBe('finished');
+  }
+
+  it('derives awaiting-approval status when the finished run leaves ApprovalPreview as root', () => {
+    setRootComponent('case-D-10291', 'ApprovalPreview', {
+      caseId: 'D-10291',
+      newCaseStatus: 'Pending Evidence',
+      missingItems: [],
+      actionAfterApproval: 'Create task.',
+      onApprove: { event: { name: 'approve_task_creation', context: {} } },
+      onEdit: { event: { name: 'edit_task_creation', context: {} } },
+      onCancel: { event: { name: 'cancel_task_creation', context: {} } },
+    });
+    fireRunFinished();
+    expect(useWorkbenchStore.getState().connectionStatus).toBe('awaiting-approval');
   });
 
-  it('sets connection status to disconnected on RUN_ERROR', () => {
-    const event: RunErrorEvent = { type: EventType.RUN_ERROR, message: 'boom' } as RunErrorEvent;
+  it('derives completed status when the finished run leaves TaskCreatedCard as root', () => {
+    setRootComponent('case-D-10291', 'TaskCreatedCard', {
+      taskId: 'EVID-1',
+      caseStatus: 'x',
+      auditEntry: 'y',
+      nextOwner: 'z',
+    });
+    fireRunFinished();
+    expect(useWorkbenchStore.getState().connectionStatus).toBe('completed');
+  });
+
+  it('derives cancelled status when getLastDispatchedActionId returns cancel_task_creation and root is DecisionCard', () => {
+    setRootComponent('case-D-10291', 'DecisionCard', {
+      status: 'Open',
+      disputeType: 'Non-delivery',
+      evidenceReadiness: '0 of 2',
+      recommendedAction: 'Review',
+    });
+    lastDispatchedActionId = 'cancel_task_creation';
+    fireRunFinished();
+    expect(useWorkbenchStore.getState().connectionStatus).toBe('cancelled');
+  });
+
+  it('derives idle status when no action was dispatched and root is DecisionCard', () => {
+    setRootComponent('case-D-10291', 'DecisionCard', {
+      status: 'Open',
+      disputeType: 'Non-delivery',
+      evidenceReadiness: '0 of 2',
+      recommendedAction: 'Review',
+    });
+    lastDispatchedActionId = undefined;
+    fireRunFinished();
+    expect(useWorkbenchStore.getState().connectionStatus).toBe('idle');
+  });
+
+  it('sets a retryable transport WorkbenchError and failed status on RUN_ERROR', () => {
+    const event: RunErrorEvent = {
+      type: EventType.RUN_ERROR,
+      message: 'boom',
+      code: 'x',
+    } as RunErrorEvent;
     workbenchAgentSubscriber.onRunErrorEvent?.(fakeParams(event));
-    expect(useWorkbenchStore.getState().connectionStatus).toBe('disconnected');
+    expect(useWorkbenchStore.getState().connectionStatus).toBe('failed');
+    expect(useWorkbenchStore.getState().transportError).toMatchObject({
+      message: 'boom',
+      retryable: true,
+    });
+  });
+
+  it('sets a retryable transport WorkbenchError on onRunFailed', () => {
+    workbenchAgentSubscriber.onRunFailed?.({
+      error: new Error('stream dropped'),
+      messages: [],
+      state: {},
+      agent: {} as never,
+      input: {} as never,
+    });
+    expect(useWorkbenchStore.getState().connectionStatus).toBe('failed');
+    expect(useWorkbenchStore.getState().transportError?.code).toBe('sse_interrupted');
+  });
+
+  it('sets a non-retryable protocol WorkbenchError on a malformed a2ui payload', () => {
+    const event: CustomEvent = {
+      type: EventType.CUSTOM,
+      name: 'a2ui',
+      value: { version: 'v0.8', createSurface: { surfaceId: 'x', catalogId: 'y' } },
+    };
+    workbenchAgentSubscriber.onCustomEvent?.(fakeParams(event));
+    expect(useWorkbenchStore.getState().protocolError).toMatchObject({ retryable: false });
   });
 
   it('appends a progress line from a CUSTOM/progress event', () => {

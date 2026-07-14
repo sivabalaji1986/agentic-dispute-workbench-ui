@@ -22,8 +22,28 @@ import { preprocessUnknownComponents } from '../components/catalog/catalogInstan
 export function createWorkbenchAgentSubscriber(
   processor: MessageProcessor<ReactComponentImplementation>,
   onProtocolError: (failure: ValidationFailure) => void = logValidationFailure,
+  getLastDispatchedActionId: () => string | undefined = () => undefined,
 ): AgentSubscriber {
   let stateDoc: Record<string, unknown> = {};
+
+  // The single place a rejected inbound payload becomes visible: it always
+  // logs/notifies via onProtocolError *and* surfaces a WorkbenchError in the
+  // store, regardless of what onProtocolError itself does — callers (tests,
+  // WorkbenchSession) may layer additional behavior (e.g. console logging)
+  // on top via onProtocolError, but the store's protocolError field is not
+  // their responsibility to set.
+  function reportProtocolError(failure: ValidationFailure): void {
+    onProtocolError(failure);
+    useWorkbenchStore.getState().setProtocolError({
+      code:
+        failure.eventType === 'a2ui' && failure.issuePath === 'version'
+          ? 'unsupported_a2ui_version'
+          : 'protocol_error',
+      title: 'Protocol error',
+      message: 'The server sent a payload this client could not understand.',
+      retryable: false,
+    });
+  }
 
   function syncEvidenceReadiness(): void {
     const value = stateDoc.evidenceReadiness;
@@ -33,7 +53,7 @@ export function createWorkbenchAgentSubscriber(
   function applyA2uiMessage(rawValue: unknown): void {
     const validated = validateA2uiMessage(rawValue);
     if (!validated.success) {
-      onProtocolError(validated.failure);
+      reportProtocolError(validated.failure);
       return;
     }
     const message = validated.data;
@@ -70,18 +90,41 @@ export function createWorkbenchAgentSubscriber(
       useWorkbenchStore.getState().setConnectionStatus('streaming');
     },
     onRunFinishedEvent() {
-      useWorkbenchStore.getState().setConnectionStatus('finished');
+      const surface = processor.model.surfacesMap.values().next().value;
+      const rootType = surface?.componentsModel.get('root')?.type;
+      const status =
+        rootType === 'ApprovalPreview'
+          ? 'awaiting-approval'
+          : rootType === 'TaskCreatedCard'
+            ? 'completed'
+            : getLastDispatchedActionId() === 'cancel_task_creation'
+              ? 'cancelled'
+              : 'idle';
+      useWorkbenchStore.getState().setConnectionStatus(status);
     },
-    onRunErrorEvent() {
-      useWorkbenchStore.getState().setConnectionStatus('disconnected');
+    onRunErrorEvent({ event }) {
+      useWorkbenchStore.getState().setTransportError({
+        code: event.code ?? 'run_error',
+        title: 'Run failed',
+        message: event.message,
+        retryable: true,
+        runId: useWorkbenchStore.getState().runId ?? undefined,
+      });
+      useWorkbenchStore.getState().setConnectionStatus('failed');
     },
-    onRunFailed() {
-      useWorkbenchStore.getState().setConnectionStatus('disconnected');
+    onRunFailed({ error }) {
+      useWorkbenchStore.getState().setTransportError({
+        code: 'sse_interrupted',
+        title: 'Connection interrupted',
+        message: error.message || 'The connection to the orchestrator was interrupted.',
+        retryable: true,
+      });
+      useWorkbenchStore.getState().setConnectionStatus('failed');
     },
     onStateSnapshotEvent({ event }) {
       const validated = validateStateSnapshot(event.snapshot);
       if (!validated.success) {
-        onProtocolError(validated.failure);
+        reportProtocolError(validated.failure);
         return;
       }
       stateDoc = validated.data;
@@ -90,7 +133,7 @@ export function createWorkbenchAgentSubscriber(
     onStateDeltaEvent({ event }) {
       const validated = validateStateDelta(event.delta);
       if (!validated.success) {
-        onProtocolError(validated.failure);
+        reportProtocolError(validated.failure);
         return;
       }
       const result = applyPatch(stateDoc, validated.data as Operation[], true, false);
@@ -101,7 +144,7 @@ export function createWorkbenchAgentSubscriber(
       if (isProgressCustomEvent(event)) {
         const validated = validateProgressEventValue(event.value);
         if (!validated.success) {
-          onProtocolError(validated.failure);
+          reportProtocolError(validated.failure);
           return;
         }
         useWorkbenchStore.getState().appendProgressLine(validated.data.source, validated.data.text);

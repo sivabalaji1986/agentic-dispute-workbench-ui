@@ -5,6 +5,7 @@ import { useWorkbenchStore } from '../state/workbenchStore';
 
 export function DecisionPanel() {
   const processor = useWorkbenchStore((state) => state.processor);
+  const protocolError = useWorkbenchStore((state) => state.protocolError);
   const [surface, setSurface] = useState<SurfaceModel<ReactComponentImplementation> | undefined>(
     () => processor.model.surfacesMap.values().next().value,
   );
@@ -23,6 +24,14 @@ export function DecisionPanel() {
       <h2 className="border-b border-ledger-line pb-2 font-display text-xs font-medium uppercase tracking-[0.14em] text-ink/70">
         Decision panel
       </h2>
+      {protocolError && (
+        <div className="rounded-[var(--radius-card)] border border-ledger-line border-l-4 border-l-pending bg-pending-surface p-3 text-sm text-pending">
+          <p className="font-mono text-xs font-semibold uppercase tracking-[0.1em]">
+            {protocolError.title}
+          </p>
+          <p className="mt-1">{protocolError.message}</p>
+        </div>
+      )}
       {surface ? (
         <A2uiSurface surface={surface} />
       ) : (

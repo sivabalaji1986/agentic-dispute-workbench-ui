@@ -13,6 +13,8 @@ describe('useWorkbenchStore', () => {
       connectionStatus: 'idle',
       progressLines: [],
       evidenceReadiness: null,
+      transportError: null,
+      protocolError: null,
     });
   });
 
@@ -58,5 +60,28 @@ describe('useWorkbenchStore', () => {
     useWorkbenchStore.getState().setProcessor(second);
     expect(useWorkbenchStore.getState().processor).toBe(second);
     expect(useWorkbenchStore.getState().processor).not.toBe(first);
+  });
+
+  it('setTransportError / setProtocolError update independently', () => {
+    const transportError = {
+      code: 'sse_interrupted',
+      title: 'Connection lost',
+      message: 'The stream was interrupted. Try reconnecting.',
+      retryable: true,
+    };
+    useWorkbenchStore.getState().setTransportError(transportError);
+    expect(useWorkbenchStore.getState().transportError).toEqual(transportError);
+    expect(useWorkbenchStore.getState().protocolError).toBeNull();
+  });
+
+  it('startCase clears any prior transport/protocol error', () => {
+    useWorkbenchStore.getState().setTransportError({
+      code: 'x',
+      title: 'x',
+      message: 'x',
+      retryable: false,
+    });
+    useWorkbenchStore.getState().startCase({ caseId: 'D-2', threadId: 't-2', disputeText: 'x' });
+    expect(useWorkbenchStore.getState().transportError).toBeNull();
   });
 });

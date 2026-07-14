@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useWorkbenchStore } from '../state/workbenchStore';
+import { useWorkbenchStore, type WorkbenchError } from '../state/workbenchStore';
 import type { AgentSource } from '../agui/events';
 import { reconnect } from '../agui/client';
 
@@ -25,6 +25,7 @@ export function LiveProgressPanel() {
   const progressLines = useWorkbenchStore((state) => state.progressLines);
   const connectionStatus = useWorkbenchStore((state) => state.connectionStatus);
   const evidenceReadiness = useWorkbenchStore((state) => state.evidenceReadiness);
+  const transportError = useWorkbenchStore((state) => state.transportError);
   const containerRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
 
@@ -46,7 +47,7 @@ export function LiveProgressPanel() {
             </span>
           )}
         </div>
-        <ConnectionStrip status={connectionStatus} />
+        <ConnectionStrip status={connectionStatus} error={transportError} />
       </div>
       <div
         ref={containerRef}
@@ -91,7 +92,13 @@ export function LiveProgressPanel() {
   );
 }
 
-function ConnectionStrip({ status }: { status: string }) {
+function ConnectionStrip({
+  status,
+  error,
+}: {
+  status: string;
+  error: WorkbenchError | null;
+}) {
   if (status === 'connecting') {
     return (
       <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink/50">
@@ -100,22 +107,27 @@ function ConnectionStrip({ status }: { status: string }) {
       </p>
     );
   }
-  if (status === 'disconnected') {
+  if (status === 'failed') {
     return (
       <div className="mt-1.5 -mx-4 flex items-center justify-between bg-pending-surface px-4 py-1.5 text-xs">
-        <span className="text-pending">Disconnected</span>
-        <button
-          type="button"
-          onClick={reconnect}
-          className="font-medium text-pending underline decoration-pending/40 underline-offset-2 hover:decoration-pending"
-        >
-          Reconnect
-        </button>
+        <span className="text-pending">{error?.message ?? 'Disconnected'}</span>
+        {error?.retryable !== false && (
+          <button
+            type="button"
+            onClick={reconnect}
+            className="font-medium text-pending underline decoration-pending/40 underline-offset-2 hover:decoration-pending"
+          >
+            Reconnect
+          </button>
+        )}
       </div>
     );
   }
-  if (status === 'finished') {
+  if (status === 'completed') {
     return <p className="mt-1.5 font-mono text-[11px] text-ink/40">Run complete</p>;
+  }
+  if (status === 'awaiting-approval') {
+    return <p className="mt-1.5 text-xs text-ink/50">Awaiting approval</p>;
   }
   if (status === 'streaming') {
     return <p className="mt-1.5 text-xs text-ink/50">Streaming</p>;

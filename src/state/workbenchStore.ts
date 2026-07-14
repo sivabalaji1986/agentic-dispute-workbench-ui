@@ -4,7 +4,22 @@ import type { ReactComponentImplementation } from '@a2ui/react/v0_9';
 import type { AgentSource } from '../agui/events';
 import { disputeCatalog } from '../components/catalog/catalogInstance';
 
-export type ConnectionStatus = 'idle' | 'connecting' | 'streaming' | 'disconnected' | 'finished';
+export type ConnectionStatus =
+  | 'idle'
+  | 'connecting'
+  | 'streaming'
+  | 'awaiting-approval'
+  | 'completed'
+  | 'cancelled'
+  | 'failed';
+
+export interface WorkbenchError {
+  code: string;
+  title: string;
+  message: string;
+  retryable: boolean;
+  runId?: string;
+}
 
 export interface ProgressLine {
   id: string;
@@ -21,6 +36,8 @@ interface WorkbenchState {
   connectionStatus: ConnectionStatus;
   progressLines: ProgressLine[];
   evidenceReadiness: string | null;
+  transportError: WorkbenchError | null;
+  protocolError: WorkbenchError | null;
   processor: MessageProcessor<ReactComponentImplementation>;
   startCase: (params: { caseId: string; threadId: string; disputeText: string }) => void;
   setRunId: (runId: string) => void;
@@ -28,6 +45,8 @@ interface WorkbenchState {
   appendProgressLine: (source: AgentSource, text: string) => void;
   setEvidenceReadiness: (value: string | null) => void;
   setProcessor: (processor: MessageProcessor<ReactComponentImplementation>) => void;
+  setTransportError: (error: WorkbenchError | null) => void;
+  setProtocolError: (error: WorkbenchError | null) => void;
 }
 
 let progressLineCounter = 0;
@@ -40,6 +59,8 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
   connectionStatus: 'idle',
   progressLines: [],
   evidenceReadiness: null,
+  transportError: null,
+  protocolError: null,
   processor: new MessageProcessor<ReactComponentImplementation>([disputeCatalog]),
 
   startCase: ({ caseId, threadId, disputeText }) =>
@@ -51,6 +72,8 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
       connectionStatus: 'connecting',
       progressLines: [],
       evidenceReadiness: null,
+      transportError: null,
+      protocolError: null,
     }),
 
   setRunId: (runId) => set({ runId }),
@@ -68,4 +91,8 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
   setEvidenceReadiness: (value) => set({ evidenceReadiness: value }),
 
   setProcessor: (processor) => set({ processor }),
+
+  setTransportError: (error) => set({ transportError: error }),
+
+  setProtocolError: (error) => set({ protocolError: error }),
 }));

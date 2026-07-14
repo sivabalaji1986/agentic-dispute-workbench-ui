@@ -84,4 +84,19 @@ describe('WorkbenchSession', () => {
       forwardedProps: { a2uiAction: { name: 'approve_task_creation' } },
     });
   });
+
+  it('sets a retryable backend_unreachable transport error when the initial runAgent rejects', async () => {
+    const agent: AguiLikeAgent = {
+      threadId: 'fake',
+      subscribe: () => ({ unsubscribe: () => {} }),
+      runAgent: vi.fn().mockRejectedValue(new Error('network down')),
+      abortRun: vi.fn(),
+    };
+    const session = new WorkbenchSession('t-1', { agentFactory: () => agent });
+    session.start();
+    await vi.waitFor(() => {
+      expect(useWorkbenchStore.getState().connectionStatus).toBe('failed');
+    });
+    expect(useWorkbenchStore.getState().transportError?.code).toBe('backend_unreachable');
+  });
 });
