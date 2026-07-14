@@ -62,7 +62,7 @@ describe('NextActions', () => {
     expect(screen.getByText('Save Case Note is not in demo scope')).toBeInTheDocument();
   });
 
-  it('renders a disabled button for an action id outside the allow-list and does not dispatch it', async () => {
+  it('renders a keyboard-focusable aria-disabled button for an action id outside the allow-list and does not dispatch it', async () => {
     const onAction = vi.fn();
     const user = userEvent.setup();
 
@@ -73,8 +73,8 @@ describe('NextActions', () => {
     );
 
     const button = screen.getByRole('button', { name: 'Delete Everything' });
-    expect(button).toBeDisabled();
-    expect(button).toHaveAttribute('title', 'Unknown action — not dispatchable');
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).not.toBeDisabled();
     await user.click(button);
     expect(onAction).not.toHaveBeenCalled();
   });

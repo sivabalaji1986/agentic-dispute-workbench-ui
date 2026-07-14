@@ -1,6 +1,7 @@
 import { CaseIntakePanel } from './components/CaseIntakePanel';
 import { LiveProgressPanel } from './components/LiveProgressPanel';
 import { DecisionPanel } from './components/DecisionPanel';
+import { ModeBadge } from './components/ModeBadge';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
       <div className="xl:col-span-3">
         <DecisionPanel />
       </div>
+      <ModeBadge />
     </div>
   );
 }

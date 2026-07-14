@@ -21,6 +21,12 @@ const TAG_LABEL: Record<AgentSource, string> = {
   policy: 'POLICY',
 };
 
+const AGENT_FULL_NAME: Record<AgentSource, string> = {
+  orchestrator: 'Orchestrator',
+  'case-review': 'Case Review Agent',
+  policy: 'Policy Agent',
+};
+
 export function LiveProgressPanel() {
   const progressLines = useWorkbenchStore((state) => state.progressLines);
   const connectionStatus = useWorkbenchStore((state) => state.connectionStatus);
@@ -42,7 +48,10 @@ export function LiveProgressPanel() {
             Live agent progress
           </h2>
           {evidenceReadiness && (
-            <span className="rounded bg-ledger-line px-1.5 py-0.5 font-mono text-[11px] text-ink/70">
+            <span
+              aria-live="polite"
+              className="rounded bg-ledger-line px-1.5 py-0.5 font-mono text-[11px] text-ink/70"
+            >
               {evidenceReadiness}
             </span>
           )}
@@ -53,6 +62,9 @@ export function LiveProgressPanel() {
         ref={containerRef}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
         className="relative flex-1 overflow-y-auto px-4 py-3"
       >
         {progressLines.length === 0 ? (
@@ -73,15 +85,19 @@ export function LiveProgressPanel() {
                   />
                   <div className="flex items-baseline justify-between gap-3">
                     <span
+                      aria-hidden
                       className={`font-mono text-[10px] font-semibold uppercase tracking-wider ${TAG_COLOR[line.source]}`}
                     >
                       {TAG_LABEL[line.source]}
                     </span>
-                    <span className="shrink-0 font-mono text-[10px] tabular-nums text-ink/35">
+                    <span aria-hidden className="shrink-0 font-mono text-[10px] tabular-nums text-ink/35">
                       {new Date(line.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-sm leading-snug text-ink">{line.text}</p>
+                  <p className="mt-0.5 text-sm leading-snug text-ink">
+                    <span className="sr-only">{AGENT_FULL_NAME[line.source]}: </span>
+                    {line.text}
+                  </p>
                 </div>
               ))}
             </div>

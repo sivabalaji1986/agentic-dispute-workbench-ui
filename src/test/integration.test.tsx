@@ -51,6 +51,10 @@ describe('full demo script replay (mock mode)', () => {
     // flow — regression guard for the mock-branching bug where an
     // unrecognized action id silently replayed the entire review run.
     expect(screen.getAllByText('Understanding dispute...')).toHaveLength(1);
+
+    // Accessibility: the timeline is an ARIA live region so screen readers
+    // announce new agent progress lines as they arrive.
+    expect(screen.getByRole('log')).toHaveAttribute('aria-live', 'polite');
   });
 
   it('does not replay the review run when an out-of-scope NextActions button is clicked', async () => {

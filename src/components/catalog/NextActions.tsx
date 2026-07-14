@@ -29,16 +29,22 @@ export const NextActions = createBinderlessComponentImplementation(
           const dispatchable = isDispatchableActionId(action.id);
 
           if (!dispatchable) {
+            const describedById = `unknown-action-${action.id}`;
             return (
-              <button
-                key={action.id}
-                type="button"
-                disabled
-                title="Unknown action — not dispatchable"
-                className="cursor-not-allowed text-sm text-ink/30 underline decoration-ink/15 underline-offset-2"
-              >
-                {action.label}
-              </button>
+              <span key={action.id} className="inline-flex flex-col items-start">
+                <button
+                  type="button"
+                  aria-disabled="true"
+                  aria-describedby={describedById}
+                  onClick={(event) => event.preventDefault()}
+                  className="cursor-not-allowed text-sm text-ink/30 underline decoration-ink/15 underline-offset-2"
+                >
+                  {action.label}
+                </button>
+                <span id={describedById} className="sr-only">
+                  Unknown action — not dispatchable
+                </span>
+              </span>
             );
           }
 
