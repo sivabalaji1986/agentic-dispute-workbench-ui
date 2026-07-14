@@ -32,7 +32,12 @@ approving the one write action that actually changes anything. Nothing is writte
 the case system without an explicit human approval on a screen that says, in as many
 words, "nothing has been written yet."
 
-This repo is the frontend only — for a backend (`agentic-dispute-workbench-platform`, Java/Spring) that doesn't exist yet; the wire contract it will implement is summarized here and documented in full in the [design doc](docs/superpowers/specs/2026-07-13-agentic-dispute-workbench-ui-design.md). Until it exists, run this repo standalone via a scripted mock mode — see [Running it](#running-it).
+This repo is the frontend only — the AG-UI client and A2UI renderer host. The backend
+(`agentic-dispute-workbench-platform`, Java/Spring) doesn't exist yet; the wire contract
+it will implement is summarized here and documented in full in the
+[design doc](docs/superpowers/specs/2026-07-13-agentic-dispute-workbench-ui-design.md).
+Until it exists, this repo is fully buildable, runnable, and demoable standalone via a
+scripted mock mode — see [Running it](#running-it).
 
 ## How the workbench works
 
