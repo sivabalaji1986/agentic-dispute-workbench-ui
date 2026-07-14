@@ -1,7 +1,7 @@
-import { HttpAgent } from '@ag-ui/client';
 import { MessageProcessor } from '@a2ui/web_core/v0_9';
 import type { ReactComponentImplementation } from '@a2ui/react/v0_9';
 import { MockAgent } from '../mock/mockAgent';
+import { HttpAgentAdapter } from './httpAgentAdapter';
 import { createWorkbenchAgentSubscriber } from './bridge';
 import { useWorkbenchStore } from '../state/workbenchStore';
 import { disputeCatalog } from '../components/catalog/catalogInstance';
@@ -12,9 +12,7 @@ const isMock = import.meta.env.VITE_MOCK !== 'false';
 const orchestratorUrl = import.meta.env.VITE_ORCHESTRATOR_URL ?? 'http://localhost:8080/agui';
 
 function defaultAgentFactory(threadId: string): AguiLikeAgent {
-  return isMock
-    ? new MockAgent()
-    : (new HttpAgent({ url: orchestratorUrl, threadId }) as unknown as AguiLikeAgent);
+  return isMock ? new MockAgent() : new HttpAgentAdapter({ url: orchestratorUrl, threadId });
 }
 
 /**
