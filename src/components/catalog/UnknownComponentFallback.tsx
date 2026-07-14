@@ -15,7 +15,7 @@ export const UnknownComponentFallback = createBinderlessComponentImplementation(
       // raw wasn't valid JSON; fall back to showing it verbatim.
     }
     return (
-      <div className="rounded border-2 border-dashed border-amber-500 bg-amber-50 p-3 text-xs text-amber-900">
+      <div className="rounded-[var(--radius-card)] border border-dashed border-pending bg-pending-surface p-3 font-mono text-xs text-pending">
         <p className="font-semibold">Unknown component: {originalType}</p>
         <pre className="mt-1 overflow-x-auto whitespace-pre-wrap">{pretty}</pre>
       </div>

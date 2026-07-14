@@ -1,5 +1,11 @@
 # agentic-dispute-workbench-ui — Design
 
+> **2026-07-14 amendment:** §4.1's `checklistId`/`actionsId` composition fields
+> (previously a trailing addendum) are now the documented, `[convention — frozen]`
+> shape of `DecisionCard`, and §4's example payload is the actual three-entry mock
+> payload rather than an illustrative single-component snippet. No behavior changed —
+> this section only brings the doc in line with what was already shipped and reviewed.
+
 ## 1. Purpose
 
 A React/TypeScript frontend for a bank's Dispute Resolution Workbench: an ops analyst
@@ -203,49 +209,91 @@ fetched, just an identifier string per the `catalogId` field's contract).
 
 Built with the real `@a2ui/web_core/v0_9` `Catalog` class and
 `@a2ui/react/v0_9` `createComponentImplementation`, matching the verified flat
-`updateComponents` component shape:
+`updateComponents` component shape. **[convention — frozen]** `updateComponents`
+always carries a flat array of sibling component entries — never inlined/nested child
+objects — even when one component visually composes others (§4.1). Composition is
+expressed only as an id reference from a parent's own props (e.g. `checklistId`) to a
+sibling entry's `id` in that same array; the backend never nests one component's JSON
+inside another's. This is the actual mock payload for the decision view (three flat
+entries, `DecisionCard` referencing the other two by id), and is the canonical example —
+not an illustrative simplification:
 
 ```json
-{
-  "id": "decision-1",
-  "component": "DecisionCard",
-  "status": "Needs More Evidence",
-  "disputeType": "Goods Not Received",
-  "evidenceReadiness": "2 of 4 required items present",
-  "recommendedAction": "Create evidence request task"
-}
+[
+  {
+    "id": "root",
+    "component": "DecisionCard",
+    "status": "Needs More Evidence",
+    "disputeType": "Goods Not Received",
+    "evidenceReadiness": "2 of 4 required items present",
+    "recommendedAction": "Create evidence request task",
+    "checklistId": "evidence-checklist",
+    "actionsId": "next-actions"
+  },
+  {
+    "id": "evidence-checklist",
+    "component": "EvidenceChecklist",
+    "items": [
+      { "label": "Transaction record", "present": true },
+      { "label": "Merchant response", "present": true },
+      { "label": "Customer declaration", "present": false },
+      { "label": "Delivery / non-delivery proof", "present": false }
+    ]
+  },
+  {
+    "id": "next-actions",
+    "component": "NextActions",
+    "actions": [
+      { "id": "create_evidence_request_task", "label": "Create Evidence Request Task" },
+      { "id": "escalate_to_reviewer", "label": "Escalate to Reviewer" },
+      { "id": "save_case_note", "label": "Save Case Note" }
+    ]
+  }
+]
 ```
 
-(Structurally identical to the official `07_task-card.json` example's flat
+(Each entry is structurally identical to the official `07_task-card.json` example's flat
 `{id, component, ...props}` shape — this is what "A2UI-v0.9-conformant, not merely
-plausible" means in practice.)
+plausible" means in practice. `escalate_to_reviewer`/`save_case_note` are real action ids
+the backend may send, but the client intentionally never dispatches them — see §4.1.)
 
 ### 4.1 Components (exactly these five)
 
-| Component           | Props                                                                                                                                      |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `DecisionCard`      | `status`, `disputeType`, `evidenceReadiness`, `recommendedAction` (all `DynamicString`)                                                    |
-| `EvidenceChecklist` | `items: {label: DynamicString, present: DynamicBoolean}[]`                                                                                 |
-| `NextActions`       | `actions: {id: string, label: DynamicString}[]`, each dispatches `Action` (`event.name = action.id`)                                       |
-| `ApprovalPreview`   | `caseId`, `newCaseStatus`, `missingItems: DynamicString[]`, `actionAfterApproval`; three `Action` props: `onApprove`, `onEdit`, `onCancel` |
-| `TaskCreatedCard`   | `taskId`, `caseStatus`, `auditEntry`, `nextOwner` (all `DynamicString`)                                                                    |
+| Component           | Props                                                                                                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DecisionCard`      | `status`, `disputeType`, `evidenceReadiness`, `recommendedAction` (all `DynamicString`); `checklistId`, `actionsId` (optional `ComponentId` — see Composition below) |
+| `EvidenceChecklist` | `items: {label: DynamicString, present: DynamicBoolean}[]`                                                                                                           |
+| `NextActions`       | `actions: {id: string, label: DynamicString}[]`, each dispatches `Action` (`event.name = action.id`) — except two reserved out-of-scope ids, see below               |
+| `ApprovalPreview`   | `caseId`, `newCaseStatus`, `missingItems: DynamicString[]`, `actionAfterApproval`; three `Action` props: `onApprove`, `onEdit`, `onCancel`                           |
+| `TaskCreatedCard`   | `taskId`, `caseStatus`, `auditEntry`, `nextOwner` (all `DynamicString`)                                                                                              |
 
 `ApprovalPreview` is visually distinguished (border + icon) as the human-approval gate
 — "nothing has been written yet."
 
-**Addendum — composing three simultaneous cards under one A2UI root:**
+**[convention — frozen] Composition — three simultaneous cards under one A2UI root:**
 `A2uiSurface` renders exactly one root component per surface (`id: "root"`), but the
 decision view needs `DecisionCard`, `EvidenceChecklist`, and `NextActions` visible at
 once. Since the catalog is closed (no generic `Column`/layout component allowed),
-`DecisionCard` carries two extra plumbing props — `checklistId: ComponentId` and
+`DecisionCard` carries two composition-reference props — `checklistId: ComponentId` and
 `actionsId: ComponentId` (both optional) — and calls A2UI's real child-composition
 mechanism (`buildChild`) to nest the components those ids point to. `DecisionCard` is
-always `root`; `EvidenceChecklist` and `NextActions` are separate entries in the same
-`updateComponents.components` array, referenced only through those two ids — not
-independently reachable. This is composition via the protocol's own mechanism, not a
-new catalog entry, and it doesn't change §3's session/surface/createSurface contract:
-still one surface, same id, same lifecycle. `ApprovalPreview` and `TaskCreatedCard`
-remain standalone roots (no children) since they're single-card states.
+always `root`; `EvidenceChecklist` and `NextActions` are separate, flat entries in the
+same `updateComponents.components` array (§4's example), referenced only through those
+two ids — never independently reachable, never inlined into `DecisionCard`'s own JSON.
+This is composition via the protocol's own `buildChild` mechanism, not a new catalog
+entry, and it doesn't change §3's session/surface/createSurface contract: still one
+surface, same id, same lifecycle. **`ApprovalPreview` and `TaskCreatedCard` remain
+standalone roots** — no `children`/composition props, no nested entries — since each is
+a single-card state that replaces the whole surface tree in its own `updateComponents`
+call (§3.3, §7).
+
+**[convention — frozen] Two `NextActions` ids never dispatch:** `escalate_to_reviewer`
+and `save_case_note` are real action ids the backend may include in `NextActions.actions`
+(as in §4's example), but the client intercepts them before any dispatch — same
+client-side-interception pattern as `ApprovalPreview`'s `onEdit` (§3.4.1) — showing a
+"not in demo scope" notice instead. The backend will never receive an action named
+`escalate_to_reviewer` or `save_case_note`; only `create_evidence_request_task` (and
+whatever future ids the backend adds outside this reserved pair) actually reach it.
 
 ### 4.2 Closed catalog / unknown-component fallback
 

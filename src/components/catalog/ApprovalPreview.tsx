@@ -5,62 +5,66 @@ import { ApprovalPreviewApi } from './schemas';
 export const ApprovalPreview = createComponentImplementation(ApprovalPreviewApi, ({ props }) => {
   const [showEditNotice, setShowEditNotice] = useState(false);
   return (
-    <div className="rounded-lg border-2 border-amber-500 bg-amber-50 p-4 shadow-sm">
-      <div className="flex items-center gap-2">
-        <span aria-hidden className="text-lg">
-          ⚠️
-        </span>
-        <h3 className="text-base font-semibold text-amber-900">
-          Approval required — nothing written yet
-        </h3>
-      </div>
-      <dl className="mt-3 space-y-1 text-sm text-slate-700">
+    <div className="rounded-[var(--radius-card)] border border-ledger-line border-l-4 border-l-pending bg-panel p-5 shadow-card">
+      <p className="font-mono text-xs font-semibold uppercase tracking-[0.12em] text-pending">
+        Pending — nothing has been written
+      </p>
+      <h3 className="mt-1 font-display text-2xl font-medium leading-tight text-ink">
+        Approval required
+      </h3>
+
+      <dl className="mt-3 space-y-1 border-t border-ledger-line pt-3 text-sm">
         <div className="flex gap-2">
-          <dt className="font-medium">Case</dt>
-          <dd>{props.caseId}</dd>
+          <dt className="w-28 shrink-0 text-ink/50">Case</dt>
+          <dd className="font-mono text-ink">{props.caseId}</dd>
         </div>
         <div className="flex gap-2">
-          <dt className="font-medium">New status</dt>
-          <dd>{props.newCaseStatus}</dd>
+          <dt className="w-28 shrink-0 text-ink/50">New status</dt>
+          <dd className="text-ink">{props.newCaseStatus}</dd>
         </div>
         <div className="flex gap-2">
-          <dt className="font-medium">On approval</dt>
-          <dd>{props.actionAfterApproval}</dd>
+          <dt className="w-28 shrink-0 text-ink/50">On approval</dt>
+          <dd className="text-ink">{props.actionAfterApproval}</dd>
         </div>
       </dl>
+
       {props.missingItems.length > 0 && (
-        <ul className="mt-2 list-inside list-disc text-sm text-slate-700">
+        <ul className="mt-2 space-y-1 text-sm">
           {props.missingItems.map((item: string, index: number) => (
-            <li key={index}>{item}</li>
+            <li key={index} className="flex items-center gap-2">
+              <span aria-hidden className="w-3 font-mono text-ink/30">
+                ·
+              </span>
+              <span className="text-ink/70">{item}</span>
+            </li>
           ))}
         </ul>
       )}
-      <div className="mt-4 flex gap-2">
+
+      <div className="mt-4 flex items-center gap-4">
         <button
           type="button"
-          className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+          className="rounded-[var(--radius-card)] bg-ink px-3 py-1.5 text-sm font-medium text-paper hover:bg-ink/85"
           onClick={props.onApprove}
         >
           Approve Task Creation
         </button>
         <button
           type="button"
-          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="text-sm text-ink/60 underline decoration-ink/25 underline-offset-2 hover:text-ink hover:decoration-ink/50"
           onClick={() => setShowEditNotice(true)}
         >
           Edit
         </button>
         <button
           type="button"
-          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="text-sm text-ink/60 underline decoration-ink/25 underline-offset-2 hover:text-ink hover:decoration-ink/50"
           onClick={props.onCancel}
         >
           Cancel
         </button>
       </div>
-      {showEditNotice && (
-        <p className="mt-2 text-xs text-amber-700">Edit flow not in demo scope</p>
-      )}
+      {showEditNotice && <p className="mt-2 text-xs text-ink/45">Edit flow not in demo scope</p>}
     </div>
   );
 });

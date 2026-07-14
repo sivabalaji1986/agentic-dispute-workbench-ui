@@ -12,23 +12,41 @@ export function CaseIntakePanel() {
   const busy = connectionStatus === 'connecting' || connectionStatus === 'streaming';
 
   return (
-    <section className="flex h-full flex-col gap-3 border-r border-slate-200 bg-white p-4">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Case intake</h2>
+    <section className="flex h-full flex-col gap-3 border-b border-ledger-line bg-panel p-4 xl:border-b-0 xl:border-r">
+      <div className="flex items-baseline justify-between border-b border-ledger-line pb-2">
+        <h2 className="font-display text-xs font-medium uppercase tracking-[0.14em] text-ink/70">
+          Case intake
+        </h2>
+        {caseId && <p className="font-mono text-[11px] text-ink/45">{caseId}</p>}
+      </div>
+      <label htmlFor="dispute-text" className="sr-only">
+        Customer dispute description
+      </label>
       <textarea
-        className="min-h-32 flex-1 resize-none rounded-md border border-slate-300 p-2 text-sm"
+        id="dispute-text"
+        aria-label="Customer dispute description"
+        className="min-h-28 flex-1 resize-none rounded-[var(--radius-card)] border border-ledger-line bg-paper p-2.5 text-sm text-ink placeholder:text-ink/35"
         value={disputeText}
         onChange={(event) => setDisputeText(event.target.value)}
         disabled={busy}
       />
       <button
         type="button"
-        className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className={
+          caseId
+            ? // A session already exists: Approve is the one solid button while a
+              // decision is in flight, so re-submitting stays quiet.
+              'rounded-[var(--radius-card)] border border-ink px-3 py-2 text-sm font-medium text-ink hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink'
+            : // No session yet: this is the app's only entry point, so it earns
+              // the solid treatment — the "one solid button" rule holds within
+              // any active session, which is where approval semantics matter.
+              'rounded-[var(--radius-card)] bg-ink px-3 py-2 text-sm font-medium text-paper hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-40'
+        }
         disabled={busy}
         onClick={() => startDemoCase(disputeText)}
       >
         Review Dispute
       </button>
-      {caseId && <p className="text-xs text-slate-500">Case {caseId}</p>}
     </section>
   );
 }

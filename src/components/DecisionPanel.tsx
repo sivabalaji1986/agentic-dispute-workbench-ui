@@ -19,15 +19,39 @@ export function DecisionPanel() {
   }, [processor]);
 
   return (
-    <section className="flex h-full flex-col gap-3 bg-white p-4">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+    <section className="flex h-full flex-col gap-4 bg-paper p-4">
+      <h2 className="border-b border-ledger-line pb-2 font-display text-xs font-medium uppercase tracking-[0.14em] text-ink/70">
         Decision panel
       </h2>
       {surface ? (
         <A2uiSurface surface={surface} />
       ) : (
-        <p className="text-sm text-slate-400">Awaiting decision from the orchestrator…</p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+          <DocumentOutline />
+          <p className="text-sm text-ink/40">No decision yet — review a dispute to begin.</p>
+        </div>
       )}
     </section>
+  );
+}
+
+function DocumentOutline() {
+  return (
+    <svg aria-hidden width="64" height="80" viewBox="0 0 64 80" className="text-ink/15">
+      <rect
+        x="1"
+        y="1"
+        width="62"
+        height="78"
+        rx="3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <line x1="12" y1="20" x2="52" y2="20" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="12" y1="32" x2="52" y2="32" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="12" y1="44" x2="40" y2="44" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="12" y1="60" x2="34" y2="60" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
   );
 }
