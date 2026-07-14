@@ -1,5 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
+import { MessageProcessor } from '@a2ui/web_core/v0_9';
 import { useWorkbenchStore } from './workbenchStore';
+import { disputeCatalog } from '../components/catalog/catalogInstance';
 
 describe('useWorkbenchStore', () => {
   beforeEach(() => {
@@ -11,6 +13,8 @@ describe('useWorkbenchStore', () => {
       connectionStatus: 'idle',
       progressLines: [],
       evidenceReadiness: null,
+      transportError: null,
+      protocolError: null,
     });
   });
 
@@ -48,5 +52,36 @@ describe('useWorkbenchStore', () => {
     const processor = useWorkbenchStore.getState().processor;
     expect(processor).toBeDefined();
     expect(useWorkbenchStore.getState().processor).toBe(processor);
+  });
+
+  it('setProcessor swaps the processor instance the store exposes', () => {
+    const first = useWorkbenchStore.getState().processor;
+    const second = new MessageProcessor([disputeCatalog]);
+    useWorkbenchStore.getState().setProcessor(second);
+    expect(useWorkbenchStore.getState().processor).toBe(second);
+    expect(useWorkbenchStore.getState().processor).not.toBe(first);
+  });
+
+  it('setTransportError / setProtocolError update independently', () => {
+    const transportError = {
+      code: 'sse_interrupted',
+      title: 'Connection lost',
+      message: 'The stream was interrupted. Try reconnecting.',
+      retryable: true,
+    };
+    useWorkbenchStore.getState().setTransportError(transportError);
+    expect(useWorkbenchStore.getState().transportError).toEqual(transportError);
+    expect(useWorkbenchStore.getState().protocolError).toBeNull();
+  });
+
+  it('startCase clears any prior transport/protocol error', () => {
+    useWorkbenchStore.getState().setTransportError({
+      code: 'x',
+      title: 'x',
+      message: 'x',
+      retryable: false,
+    });
+    useWorkbenchStore.getState().startCase({ caseId: 'D-2', threadId: 't-2', disputeText: 'x' });
+    expect(useWorkbenchStore.getState().transportError).toBeNull();
   });
 });

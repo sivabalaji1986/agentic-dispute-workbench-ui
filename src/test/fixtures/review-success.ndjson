@@ -1,0 +1,27 @@
+{"type":"RUN_STARTED","threadId":"demo-thread-d-10291","runId":"run-review"}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Understanding dispute..."}}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Dispute type detected: Goods Not Received"}}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Preparing specialist review..."}}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Calling Case Review Agent..."}}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Calling Policy Agent..."}}
+{"type":"CUSTOM","name":"progress","value":{"source":"case-review","text":"Checking transaction status..."}}
+{"type":"CUSTOM","name":"progress","value":{"source":"policy","text":"Searching policy document..."}}
+{"type":"CUSTOM","name":"progress","value":{"source":"case-review","text":"Transaction found for SGD 250"}}
+{"type":"CUSTOM","name":"progress","value":{"source":"policy","text":"Goods Not Received policy section found"}}
+{"type":"CUSTOM","name":"progress","value":{"source":"case-review","text":"Merchant response available"}}
+{"type":"CUSTOM","name":"progress","value":{"source":"policy","text":"Interpreting policy requirements"}}
+{"type":"CUSTOM","name":"progress","value":{"source":"case-review","text":"Case file contains transaction record"}}
+{"type":"CUSTOM","name":"progress","value":{"source":"policy","text":"Required evidence list identified"}}
+{"type":"CUSTOM","name":"progress","value":{"source":"case-review","text":"Case file contains merchant response"}}
+{"type":"CUSTOM","name":"progress","value":{"source":"case-review","text":"No additional customer documents found in case file"}}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Merging case facts with policy requirements..."}}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Comparing available documents against required evidence..."}}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Missing customer declaration"}}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Missing delivery / non-delivery proof"}}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Calculating evidence readiness..."}}
+{"type":"STATE_SNAPSHOT","snapshot":{"evidenceReadiness":null}}
+{"type":"STATE_DELTA","delta":[{"op":"replace","path":"/evidenceReadiness","value":"2 of 4 required items present"}]}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Preparing decision view..."}}
+{"type":"CUSTOM","name":"a2ui","value":{"version":"v0.9","createSurface":{"surfaceId":"case-D-10291","catalogId":"https://dispute-workbench.internal/catalogs/v1.json","sendDataModel":false}}}
+{"type":"CUSTOM","name":"a2ui","value":{"version":"v0.9","updateComponents":{"surfaceId":"case-D-10291","components":[{"id":"root","component":"DecisionCard","status":"Needs More Evidence","disputeType":"Goods Not Received","evidenceReadiness":"2 of 4 required items present","recommendedAction":"Create evidence request task","checklistId":"evidence-checklist","actionsId":"next-actions"},{"id":"evidence-checklist","component":"EvidenceChecklist","items":[{"label":"Transaction record","present":true},{"label":"Merchant response","present":true},{"label":"Customer declaration","present":false},{"label":"Delivery / non-delivery proof","present":false}]},{"id":"next-actions","component":"NextActions","actions":[{"id":"create_evidence_request_task","label":"Create Evidence Request Task"},{"id":"escalate_to_reviewer","label":"Escalate to Reviewer"},{"id":"save_case_note","label":"Save Case Note"}]}]}}}
+{"type":"RUN_FINISHED","threadId":"demo-thread-d-10291","runId":"run-review"}

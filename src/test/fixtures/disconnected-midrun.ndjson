@@ -1,0 +1,4 @@
+{"type":"RUN_STARTED","threadId":"fixture-thread","runId":"run-fixture-disconnect"}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Understanding dispute..."}}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Calling Case Review Agent..."}}
+{"__runFailed":true,"message":"stream interrupted"}

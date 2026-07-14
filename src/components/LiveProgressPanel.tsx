@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useWorkbenchStore } from '../state/workbenchStore';
+import { useWorkbenchStore, type WorkbenchError } from '../state/workbenchStore';
 import type { AgentSource } from '../agui/events';
 import { reconnect } from '../agui/client';
 
@@ -21,10 +21,17 @@ const TAG_LABEL: Record<AgentSource, string> = {
   policy: 'POLICY',
 };
 
+const AGENT_FULL_NAME: Record<AgentSource, string> = {
+  orchestrator: 'Orchestrator',
+  'case-review': 'Case Review Agent',
+  policy: 'Policy Agent',
+};
+
 export function LiveProgressPanel() {
   const progressLines = useWorkbenchStore((state) => state.progressLines);
   const connectionStatus = useWorkbenchStore((state) => state.connectionStatus);
   const evidenceReadiness = useWorkbenchStore((state) => state.evidenceReadiness);
+  const transportError = useWorkbenchStore((state) => state.transportError);
   const containerRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
 
@@ -41,17 +48,23 @@ export function LiveProgressPanel() {
             Live agent progress
           </h2>
           {evidenceReadiness && (
-            <span className="rounded bg-ledger-line px-1.5 py-0.5 font-mono text-[11px] text-ink/70">
+            <span
+              aria-live="polite"
+              className="rounded bg-ledger-line px-1.5 py-0.5 font-mono text-[11px] text-ink/70"
+            >
               {evidenceReadiness}
             </span>
           )}
         </div>
-        <ConnectionStrip status={connectionStatus} />
+        <ConnectionStrip status={connectionStatus} error={transportError} />
       </div>
       <div
         ref={containerRef}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
         className="relative flex-1 overflow-y-auto px-4 py-3"
       >
         {progressLines.length === 0 ? (
@@ -72,15 +85,19 @@ export function LiveProgressPanel() {
                   />
                   <div className="flex items-baseline justify-between gap-3">
                     <span
+                      aria-hidden
                       className={`font-mono text-[10px] font-semibold uppercase tracking-wider ${TAG_COLOR[line.source]}`}
                     >
                       {TAG_LABEL[line.source]}
                     </span>
-                    <span className="shrink-0 font-mono text-[10px] tabular-nums text-ink/35">
+                    <span aria-hidden className="shrink-0 font-mono text-[10px] tabular-nums text-ink/35">
                       {new Date(line.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-sm leading-snug text-ink">{line.text}</p>
+                  <p className="mt-0.5 text-sm leading-snug text-ink">
+                    <span className="sr-only">{AGENT_FULL_NAME[line.source]}: </span>
+                    {line.text}
+                  </p>
                 </div>
               ))}
             </div>
@@ -91,7 +108,13 @@ export function LiveProgressPanel() {
   );
 }
 
-function ConnectionStrip({ status }: { status: string }) {
+function ConnectionStrip({
+  status,
+  error,
+}: {
+  status: string;
+  error: WorkbenchError | null;
+}) {
   if (status === 'connecting') {
     return (
       <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink/50">
@@ -100,22 +123,27 @@ function ConnectionStrip({ status }: { status: string }) {
       </p>
     );
   }
-  if (status === 'disconnected') {
+  if (status === 'failed') {
     return (
       <div className="mt-1.5 -mx-4 flex items-center justify-between bg-pending-surface px-4 py-1.5 text-xs">
-        <span className="text-pending">Disconnected</span>
-        <button
-          type="button"
-          onClick={reconnect}
-          className="font-medium text-pending underline decoration-pending/40 underline-offset-2 hover:decoration-pending"
-        >
-          Reconnect
-        </button>
+        <span className="text-pending">{error?.message ?? 'Disconnected'}</span>
+        {error?.retryable !== false && (
+          <button
+            type="button"
+            onClick={reconnect}
+            className="font-medium text-pending underline decoration-pending/40 underline-offset-2 hover:decoration-pending"
+          >
+            Reconnect
+          </button>
+        )}
       </div>
     );
   }
-  if (status === 'finished') {
+  if (status === 'completed') {
     return <p className="mt-1.5 font-mono text-[11px] text-ink/40">Run complete</p>;
+  }
+  if (status === 'awaiting-approval') {
+    return <p className="mt-1.5 text-xs text-ink/50">Awaiting approval</p>;
   }
   if (status === 'streaming') {
     return <p className="mt-1.5 text-xs text-ink/50">Streaming</p>;

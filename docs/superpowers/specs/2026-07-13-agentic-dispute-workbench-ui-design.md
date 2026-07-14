@@ -1,5 +1,27 @@
 # agentic-dispute-workbench-ui — Design
 
+> **2026-07-14 amendment (hardening pass):** New §3.7 "Error handling and
+> status model" documents `WorkbenchError` and the connection-status enum
+> change (`disconnected`/`finished` replaced by `awaiting-approval` /
+> `completed` / `cancelled` / `failed`, derived client-side from the current
+> surface root and the last dispatched action — nothing new for the backend
+> to send).
+
+> **2026-07-14 amendment (hardening pass):** New note in §4.1 documents the
+> frozen action-id allow-list (`src/agui/actionIds.ts`): the backend may only
+> ever expect `create_evidence_request_task`, `approve_task_creation`,
+> `cancel_task_creation`, `escalate_to_reviewer`, or `save_case_note` to be
+> dispatched by `NextActions`. Any other id renders disabled and is never
+> sent.
+
+> **2026-07-14 amendment (hardening pass):** New §3.6 "Inbound payload
+> validation" documents that the client validates every inbound `progress`,
+> `a2ui`, `STATE_SNAPSHOT`, and `STATE_DELTA` payload against Zod schemas
+> before acting on it, with fixed caps (`MAX_COMPONENTS_PER_UPDATE=20`,
+> `MAX_CHECKLIST_ITEMS=20`, `MAX_ACTIONS=10`, `MAX_PROGRESS_TEXT=500`). These
+> limits are load-bearing — a backend payload that exceeds them is rejected,
+> not truncated.
+
 > **2026-07-14 amendment:** §4.1's `checklistId`/`actionsId` composition fields
 > (previously a trailing addendum) are now the documented, `[convention — frozen]`
 > shape of `DecisionCard`, and §4's example payload is the actual three-entry mock
@@ -202,6 +224,63 @@ recreating the surface. This matters because the preview, approval, and cancel r
 continue the same surface (§3.3) — none of them should resend `createSurface`, but the
 client tolerates it defensively if one does.
 
+### 3.6 Inbound payload validation
+
+**[convention — frozen]** Every inbound `progress` and `a2ui` `CUSTOM` event
+value, and every `STATE_SNAPSHOT`/`STATE_DELTA` payload, is validated against
+a Zod schema (`src/agui/validation.ts`) before the client acts on it —
+including in mock mode, which runs through the identical validation code as
+the live path. A payload that fails validation is dropped (never applied,
+never thrown into React) and logged as a redacted summary (event type + the
+first Zod issue path only — never the raw payload). The backend must respect
+these fixed caps:
+
+| Cap                        | Value | Applies to                                   |
+| --------------------------- | ----- | --------------------------------------------- |
+| `MAX_COMPONENTS_PER_UPDATE` | 20    | `updateComponents.components.length`          |
+| `MAX_CHECKLIST_ITEMS`       | 20    | `EvidenceChecklist.items.length`              |
+| `MAX_ACTIONS`               | 10    | `NextActions.actions.length`                  |
+| `MAX_PROGRESS_TEXT`         | 500   | `progress.text.length` (also must be non-empty) |
+
+`surfaceId` must match `^[a-zA-Z0-9_-]{1,64}$` on every message that carries
+one. `progress.source` must be one of `orchestrator`/`case-review`/`policy` —
+an unrecognized source is rejected, not passed through. Component props for
+the five catalog types are validated against the same schemas the catalog
+itself renders against (`src/components/catalog/schemas.ts`); a component
+type outside the closed catalog is *not* rejected here — it is intentionally
+left to the existing `UnknownComponentFallback` safety net (§4.2).
+
+### 3.7 Error handling and status model
+
+**[convention — frozen]** Errors are two independent, client-only signals —
+the backend does not need to send anything new to produce them:
+
+- **Transport errors** (`{code, title, message, retryable, runId?}`, shown in
+  the timeline header strip): backend unreachable when a case starts, an SSE
+  connection interrupted mid-run (`onRunFailed`), or a `RUN_ERROR` event
+  (its `message`/`code` are preserved verbatim).
+- **Protocol errors** (same shape, shown as a decision-panel notice): any
+  payload rejected by §3.6's inbound validation. `unsupported_a2ui_version`
+  is used specifically when the rejection is on the `version` field;
+  everything else is the generic `protocol_error` code with generic wording
+  — the raw payload is never shown in the UI.
+
+**[convention — frozen]** `connectionStatus` is
+`idle | connecting | streaming | awaiting-approval | completed | cancelled |
+failed` — this replaces the previous `disconnected`/`finished` pair. On
+`RUN_FINISHED`, the client derives the new status from the surface's current
+root component and which action (if any) it just dispatched:
+
+| Root component after finish | Last dispatched action id    | New status         |
+| ----------------------------- | ------------------------------ | -------------------- |
+| `ApprovalPreview`              | (any)                           | `awaiting-approval`  |
+| `TaskCreatedCard`              | (any)                           | `completed`          |
+| `DecisionCard`                 | `cancel_task_creation`          | `cancelled`          |
+| `DecisionCard`                 | none (the initial review run)   | `idle`               |
+
+This is entirely inferred client-side — the backend does not send a status
+field.
+
 ## 4. A2UI catalog
 
 Catalog id: `https://dispute-workbench.internal/catalogs/v1.json` (our own — not
@@ -292,8 +371,20 @@ and `save_case_note` are real action ids the backend may include in `NextActions
 (as in §4's example), but the client intercepts them before any dispatch — same
 client-side-interception pattern as `ApprovalPreview`'s `onEdit` (§3.4.1) — showing a
 "not in demo scope" notice instead. The backend will never receive an action named
-`escalate_to_reviewer` or `save_case_note`; only `create_evidence_request_task` (and
-whatever future ids the backend adds outside this reserved pair) actually reach it.
+`escalate_to_reviewer` or `save_case_note`; only `create_evidence_request_task` actually
+reaches it — see the action-ID allow-list below for the full picture of which ids the
+client will ever dispatch.
+
+**[convention — frozen] Action-ID allow-list:** dispatch is keyed by id, never
+by label — `NextActions.actions[].label` is display-only. The client
+maintains a single frozen list of dispatchable ids
+(`src/agui/actionIds.ts`): `create_evidence_request_task`,
+`approve_task_creation`, `cancel_task_creation`, `escalate_to_reviewer`,
+`save_case_note`. Any `NextActions` entry whose `id` is outside this list
+renders as a disabled button ("Unknown action — not dispatchable") and is
+never dispatched, regardless of its `label`. Adding a new dispatchable action
+id is a contract change and requires updating this list and this section, not
+just the backend payload.
 
 ### 4.2 Closed catalog / unknown-component fallback
 
@@ -318,8 +409,9 @@ Three-zone single page (Tailwind, light theme, dense enterprise-console aestheti
    Agent), strict arrival order, timestamped, auto-scroll with pause-on-hover.
 3. **Decision panel** — `A2uiSurface` for the session's one surface.
 
-Connection states: connecting → streaming → disconnected mid-run (reconnect button, no
-silent infinite retry) → finished.
+Connection states: connecting → streaming → failed mid-run (reconnect button, no
+silent infinite retry) → awaiting-approval / completed / cancelled / idle, per §3.7's
+status-derivation table.
 
 ## 6. State management
 

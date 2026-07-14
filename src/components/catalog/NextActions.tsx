@@ -1,24 +1,18 @@
 import { useState } from 'react';
 import { createBinderlessComponentImplementation } from '@a2ui/react/v0_9';
 import { NextActionsApi } from './schemas';
+import { isDispatchableActionId } from '../../agui/actionIds';
 
 interface NextActionItem {
   id: string;
   label: string;
 }
 
-// Action ids with no backend continuation in the demo script. Clicking these
-// must never dispatch — same client-side-interception pattern as ApprovalPreview's
-// Edit button — otherwise MockAgent's runFor() has nothing to route them to and
-// falls back to replaying the review run, which is exactly the bug this guards
-// against.
 const OUT_OF_SCOPE_LABELS: Record<string, string> = {
   escalate_to_reviewer: 'Escalate to Reviewer',
   save_case_note: 'Save Case Note',
 };
 
-// Approve Task Creation is the one solid button in the whole app (see
-// ApprovalPreview) — every button here stays quiet so that stays true.
 const PRIMARY_ACTION_ID = 'create_evidence_request_task';
 
 export const NextActions = createBinderlessComponentImplementation(
@@ -32,6 +26,28 @@ export const NextActions = createBinderlessComponentImplementation(
         {actions.map((action) => {
           const outOfScopeLabel = OUT_OF_SCOPE_LABELS[action.id];
           const isPrimary = action.id === PRIMARY_ACTION_ID;
+          const dispatchable = isDispatchableActionId(action.id);
+
+          if (!dispatchable) {
+            const describedById = `unknown-action-${action.id}`;
+            return (
+              <span key={action.id} className="inline-flex flex-col items-start">
+                <button
+                  type="button"
+                  aria-disabled="true"
+                  aria-describedby={describedById}
+                  onClick={(event) => event.preventDefault()}
+                  className="cursor-not-allowed text-sm text-ink/30 underline decoration-ink/15 underline-offset-2"
+                >
+                  {action.label}
+                </button>
+                <span id={describedById} className="sr-only">
+                  Unknown action — not dispatchable
+                </span>
+              </span>
+            );
+          }
+
           return (
             <button
               key={action.id}
