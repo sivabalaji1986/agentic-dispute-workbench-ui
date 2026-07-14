@@ -1,5 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
+import { MessageProcessor } from '@a2ui/web_core/v0_9';
 import { useWorkbenchStore } from './workbenchStore';
+import { disputeCatalog } from '../components/catalog/catalogInstance';
 
 describe('useWorkbenchStore', () => {
   beforeEach(() => {
@@ -48,5 +50,13 @@ describe('useWorkbenchStore', () => {
     const processor = useWorkbenchStore.getState().processor;
     expect(processor).toBeDefined();
     expect(useWorkbenchStore.getState().processor).toBe(processor);
+  });
+
+  it('setProcessor swaps the processor instance the store exposes', () => {
+    const first = useWorkbenchStore.getState().processor;
+    const second = new MessageProcessor([disputeCatalog]);
+    useWorkbenchStore.getState().setProcessor(second);
+    expect(useWorkbenchStore.getState().processor).toBe(second);
+    expect(useWorkbenchStore.getState().processor).not.toBe(first);
   });
 });

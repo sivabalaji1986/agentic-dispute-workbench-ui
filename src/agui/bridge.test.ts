@@ -8,16 +8,27 @@ import type {
   StateSnapshotEvent,
   StateDeltaEvent,
 } from '@ag-ui/client';
-import { resetBridgeState, workbenchAgentSubscriber } from './bridge';
+import { MessageProcessor } from '@a2ui/web_core/v0_9';
+import { createWorkbenchAgentSubscriber } from './bridge';
 import { useWorkbenchStore } from '../state/workbenchStore';
+import { disputeCatalog } from '../components/catalog/catalogInstance';
+import type { ValidationFailure } from './validation';
 
 function fakeParams<E>(event: E) {
   return { event, messages: [], state: {}, agent: {} as never, input: {} as never };
 }
 
-describe('workbenchAgentSubscriber', () => {
+describe('createWorkbenchAgentSubscriber', () => {
+  let processor: MessageProcessor<never>;
+  let protocolErrors: ValidationFailure[];
+  let workbenchAgentSubscriber: ReturnType<typeof createWorkbenchAgentSubscriber>;
+
   beforeEach(() => {
-    resetBridgeState();
+    processor = new MessageProcessor([disputeCatalog]) as never;
+    protocolErrors = [];
+    workbenchAgentSubscriber = createWorkbenchAgentSubscriber(processor, (failure) => {
+      protocolErrors.push(failure);
+    });
     useWorkbenchStore.setState({
       caseId: 'D-10291',
       threadId: 't-1',
@@ -25,6 +36,7 @@ describe('workbenchAgentSubscriber', () => {
       connectionStatus: 'idle',
       progressLines: [],
       evidenceReadiness: null,
+      processor: processor as never,
     });
   });
 
@@ -105,7 +117,6 @@ describe('workbenchAgentSubscriber', () => {
     workbenchAgentSubscriber.onCustomEvent?.(fakeParams(createEvent));
     workbenchAgentSubscriber.onCustomEvent?.(fakeParams(updateEvent));
 
-    const processor = useWorkbenchStore.getState().processor;
     expect(processor.model.getSurface(surfaceId)).toBeDefined();
   });
 
@@ -142,7 +153,7 @@ describe('workbenchAgentSubscriber', () => {
     expect(useWorkbenchStore.getState().evidenceReadiness).toBe('2 of 4 required items present');
   });
 
-  it('drops a malformed progress event instead of appending it, without throwing', () => {
+  it('drops a malformed progress event instead of appending it, and reports it', () => {
     const event: CustomEvent = {
       type: EventType.CUSTOM,
       name: 'progress',
@@ -150,6 +161,8 @@ describe('workbenchAgentSubscriber', () => {
     };
     expect(() => workbenchAgentSubscriber.onCustomEvent?.(fakeParams(event))).not.toThrow();
     expect(useWorkbenchStore.getState().progressLines).toHaveLength(0);
+    expect(protocolErrors).toHaveLength(1);
+    expect(protocolErrors[0]).toMatchObject({ eventType: 'progress' });
   });
 
   it('drops an a2ui message with the wrong version instead of touching the surface', () => {
@@ -159,7 +172,6 @@ describe('workbenchAgentSubscriber', () => {
       value: { version: 'v0.8', createSurface: { surfaceId: 'case-X', catalogId: 'x' } },
     };
     expect(() => workbenchAgentSubscriber.onCustomEvent?.(fakeParams(event))).not.toThrow();
-    const processor = useWorkbenchStore.getState().processor;
     expect(processor.model.getSurface('case-X')).toBeUndefined();
   });
 

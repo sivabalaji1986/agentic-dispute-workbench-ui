@@ -1,7 +1,7 @@
 // src/agui/client.test.ts
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { EventEmitter, A2uiClientAction } from '@a2ui/web_core/v0_9';
-import './client';
+import { startDemoCase } from './client';
 import { useWorkbenchStore } from '../state/workbenchStore';
 
 // There is no clean public seam to inject a malformed action: `onAction` is
@@ -12,20 +12,31 @@ import { useWorkbenchStore } from '../state/workbenchStore';
 // an action, so a real click can never produce a malformed one to observe.
 // At runtime, though, `SurfaceGroupModel` assigns the concrete `EventEmitter`
 // instance (which does expose `.emit(...)`) to the public `onAction` field
-// (see .../state/surface-group-model.js) — the same object client.ts's
-// module-level subscription is attached to. We reach for that same runtime
-// object here, bypassing only the TypeScript view (not the library's actual
-// wiring), to simulate what would happen if a future catalog/protocol change
-// ever let a malformed action through.
+// (see .../state/surface-group-model.js) — the same object WorkbenchSession
+// wires its onAction subscription to inside `start()` (see
+// src/agui/workbenchSession.ts). We reach for that same runtime object here,
+// bypassing only the TypeScript view (not the library's actual wiring), to
+// simulate what would happen if a future catalog/protocol change ever let a
+// malformed action through.
+//
+// `startDemoCase` is the real public entry point (client.ts) that creates a
+// WorkbenchSession and calls `.start()`, wiring the onAction subscription
+// against the session's own processor and swapping it into the store via
+// `setProcessor` — so this exercises the actual production wiring, not a
+// hand-built stand-in. Fake timers keep the mock agent's scripted
+// `setTimeout`-based events from firing in the background during the test.
 describe('onAction forwarding', () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    startDemoCase('test dispute text');
   });
 
   afterEach(() => {
     warnSpy.mockRestore();
+    vi.useRealTimers();
   });
 
   it('drops a malformed action (missing sourceComponentId) and logs a redacted warning instead of forwarding it', async () => {

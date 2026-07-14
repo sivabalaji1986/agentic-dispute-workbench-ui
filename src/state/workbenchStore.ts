@@ -27,6 +27,7 @@ interface WorkbenchState {
   setConnectionStatus: (status: ConnectionStatus) => void;
   appendProgressLine: (source: AgentSource, text: string) => void;
   setEvidenceReadiness: (value: string | null) => void;
+  setProcessor: (processor: MessageProcessor<ReactComponentImplementation>) => void;
 }
 
 let progressLineCounter = 0;
@@ -65,4 +66,6 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
     })),
 
   setEvidenceReadiness: (value) => set({ evidenceReadiness: value }),
+
+  setProcessor: (processor) => set({ processor }),
 }));
