@@ -61,4 +61,21 @@ describe('NextActions', () => {
     expect(onAction).not.toHaveBeenCalled();
     expect(screen.getByText('Save Case Note is not in demo scope')).toBeInTheDocument();
   });
+
+  it('renders a disabled button for an action id outside the allow-list and does not dispatch it', async () => {
+    const onAction = vi.fn();
+    const user = userEvent.setup();
+
+    renderA2uiComponents(
+      [NextActions],
+      [{ id: 'root', component: 'NextActions', actions: [{ id: 'delete_everything', label: 'Delete Everything' }] }],
+      { onAction },
+    );
+
+    const button = screen.getByRole('button', { name: 'Delete Everything' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('title', 'Unknown action — not dispatchable');
+    await user.click(button);
+    expect(onAction).not.toHaveBeenCalled();
+  });
 });
