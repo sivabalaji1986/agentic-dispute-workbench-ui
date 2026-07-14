@@ -43,6 +43,18 @@ describe('useWorkbenchStore', () => {
     });
   });
 
+  it('appendProgressLine keeps at most MAX_PROGRESS_LINES real entries, prepending one trim marker once the cap is exceeded', () => {
+    for (let i = 0; i < 1005; i += 1) {
+      useWorkbenchStore.getState().appendProgressLine('orchestrator', `line ${i}`);
+    }
+    const lines = useWorkbenchStore.getState().progressLines;
+    expect(lines).toHaveLength(1001); // 1000 retained real entries + 1 trim marker
+    expect(lines[0].source).toBeNull();
+    expect(lines[1].text).toBe('line 5'); // entries 0-4 were trimmed
+    expect(lines[lines.length - 1].text).toBe('line 1004');
+    expect(lines.slice(1).every((line) => line.source !== null)).toBe(true);
+  });
+
   it('setEvidenceReadiness updates the status-chip value independently', () => {
     useWorkbenchStore.getState().setEvidenceReadiness('2 of 4 required items present');
     expect(useWorkbenchStore.getState().evidenceReadiness).toBe('2 of 4 required items present');

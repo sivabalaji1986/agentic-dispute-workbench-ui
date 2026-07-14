@@ -3,6 +3,7 @@ import { MessageProcessor } from '@a2ui/web_core/v0_9';
 import type { ReactComponentImplementation } from '@a2ui/react/v0_9';
 import type { AgentSource } from '../agui/events';
 import { disputeCatalog } from '../components/catalog/catalogInstance';
+import { MAX_PROGRESS_LINES } from '../agui/validation';
 
 export type ConnectionStatus =
   'idle' | 'connecting' | 'streaming' | 'awaiting-approval' | 'completed' | 'cancelled' | 'failed';
@@ -17,10 +18,12 @@ export interface WorkbenchError {
 
 export interface ProgressLine {
   id: string;
-  source: AgentSource;
+  source: AgentSource | null; // null marks the one non-agent trim-marker row
   text: string;
   timestamp: number;
 }
+
+const TRIM_MARKER_TEXT = '— earlier entries trimmed —';
 
 interface WorkbenchState {
   caseId: string | null;
@@ -75,12 +78,31 @@ export const useWorkbenchStore = create<WorkbenchState>((set) => ({
   setConnectionStatus: (status) => set({ connectionStatus: status }),
 
   appendProgressLine: (source, text) =>
-    set((state) => ({
-      progressLines: [
-        ...state.progressLines,
-        { id: `line-${++progressLineCounter}`, source, text, timestamp: Date.now() },
-      ],
-    })),
+    set((state) => {
+      const nextLine: ProgressLine = {
+        id: `line-${++progressLineCounter}`,
+        source,
+        text,
+        timestamp: Date.now(),
+      };
+      const hasMarker = state.progressLines[0]?.source === null;
+      const realLines = hasMarker ? state.progressLines.slice(1) : state.progressLines;
+      const nextReal = [...realLines, nextLine];
+
+      if (nextReal.length <= MAX_PROGRESS_LINES) {
+        const marker = hasMarker ? [state.progressLines[0]] : [];
+        return { progressLines: [...marker, ...nextReal] };
+      }
+
+      const trimmedReal = nextReal.slice(nextReal.length - MAX_PROGRESS_LINES);
+      const marker: ProgressLine = {
+        id: 'trim-marker',
+        source: null,
+        text: TRIM_MARKER_TEXT,
+        timestamp: 0,
+      };
+      return { progressLines: [marker, ...trimmedReal] };
+    }),
 
   setEvidenceReadiness: (value) => set({ evidenceReadiness: value }),
 

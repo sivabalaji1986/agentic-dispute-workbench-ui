@@ -20,6 +20,7 @@ export const MAX_COMPONENTS_PER_UPDATE = 20;
 export const MAX_CHECKLIST_ITEMS = 20;
 export const MAX_ACTIONS = 10;
 export const MAX_PROGRESS_TEXT = 500;
+export const MAX_PROGRESS_LINES = 1000;
 
 export const AgentSourceSchema = z.enum(['orchestrator', 'case-review', 'policy']);
 

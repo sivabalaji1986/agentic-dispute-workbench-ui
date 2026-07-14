@@ -73,36 +73,47 @@ export function LiveProgressPanel() {
           <div className="relative">
             <div aria-hidden className="absolute bottom-0 left-[7px] top-0 w-px bg-ledger-line" />
             <div className="space-y-3">
-              {progressLines.map((line) => (
-                <div
-                  key={line.id}
-                  data-testid="progress-line"
-                  className="relative animate-ledger-in pl-6"
-                >
-                  <span
+              {progressLines.map((line) =>
+                line.source === null ? (
+                  <div
+                    key={line.id}
                     aria-hidden
-                    className={`absolute left-[4px] top-1.5 h-2 w-2 ${MARKER_COLOR[line.source]}`}
-                  />
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span
-                      aria-hidden
-                      className={`font-mono text-[10px] font-semibold uppercase tracking-wider ${TAG_COLOR[line.source]}`}
-                    >
-                      {TAG_LABEL[line.source]}
-                    </span>
-                    <span
-                      aria-hidden
-                      className="shrink-0 font-mono text-[10px] tabular-nums text-ink/35"
-                    >
-                      {new Date(line.timestamp).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-sm leading-snug text-ink">
-                    <span className="sr-only">{AGENT_FULL_NAME[line.source]}: </span>
+                    data-testid="progress-trim-marker"
+                    className="pl-6 font-mono text-[10px] italic text-ink/30"
+                  >
                     {line.text}
-                  </p>
-                </div>
-              ))}
+                  </div>
+                ) : (
+                  <div
+                    key={line.id}
+                    data-testid="progress-line"
+                    className="relative animate-ledger-in pl-6"
+                  >
+                    <span
+                      aria-hidden
+                      className={`absolute left-[4px] top-1.5 h-2 w-2 ${MARKER_COLOR[line.source]}`}
+                    />
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span
+                        aria-hidden
+                        className={`font-mono text-[10px] font-semibold uppercase tracking-wider ${TAG_COLOR[line.source]}`}
+                      >
+                        {TAG_LABEL[line.source]}
+                      </span>
+                      <span
+                        aria-hidden
+                        className="shrink-0 font-mono text-[10px] tabular-nums text-ink/35"
+                      >
+                        {new Date(line.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-sm leading-snug text-ink">
+                      <span className="sr-only">{AGENT_FULL_NAME[line.source]}: </span>
+                      {line.text}
+                    </p>
+                  </div>
+                ),
+              )}
             </div>
           </div>
         )}
