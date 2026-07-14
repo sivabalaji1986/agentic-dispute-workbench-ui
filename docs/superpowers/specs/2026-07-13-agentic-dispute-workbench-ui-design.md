@@ -371,8 +371,9 @@ and `save_case_note` are real action ids the backend may include in `NextActions
 (as in §4's example), but the client intercepts them before any dispatch — same
 client-side-interception pattern as `ApprovalPreview`'s `onEdit` (§3.4.1) — showing a
 "not in demo scope" notice instead. The backend will never receive an action named
-`escalate_to_reviewer` or `save_case_note`; only `create_evidence_request_task` (and
-whatever future ids the backend adds outside this reserved pair) actually reach it.
+`escalate_to_reviewer` or `save_case_note`; only `create_evidence_request_task` actually
+reaches it — see the action-ID allow-list below for the full picture of which ids the
+client will ever dispatch.
 
 **[convention — frozen] Action-ID allow-list:** dispatch is keyed by id, never
 by label — `NextActions.actions[].label` is display-only. The client

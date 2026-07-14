@@ -5,7 +5,7 @@ import { HttpAgentAdapter } from './httpAgentAdapter';
 import { createWorkbenchAgentSubscriber } from './bridge';
 import { useWorkbenchStore } from '../state/workbenchStore';
 import { disputeCatalog } from '../components/catalog/catalogInstance';
-import { validateForwardedAction, logValidationFailure, type ValidationFailure } from './validation';
+import { validateForwardedAction, logValidationFailure } from './validation';
 import type { AguiLikeAgent } from './types';
 
 const isMock = import.meta.env.VITE_MOCK !== 'false';
@@ -37,23 +37,14 @@ export class WorkbenchSession {
     this.agent = this.createAgent();
   }
 
-  private onProtocolError = (failure: ValidationFailure): void => {
-    logValidationFailure(failure);
-    useWorkbenchStore.getState().setProtocolError({
-      code:
-        failure.eventType === 'a2ui' && failure.issuePath === 'version'
-          ? 'unsupported_a2ui_version'
-          : 'protocol_error',
-      title: 'Protocol error',
-      message: 'The server sent a payload this client could not understand.',
-      retryable: false,
-    });
-  };
-
   private subscribeAgent(): void {
+    // logValidationFailure only logs; createWorkbenchAgentSubscriber's own
+    // reportProtocolError (bridge.ts) is the single place that writes
+    // WorkbenchError into the store, so there is exactly one owner of that
+    // classification logic rather than two copies to keep in sync.
     const subscriber = createWorkbenchAgentSubscriber(
       this.processor,
-      this.onProtocolError,
+      logValidationFailure,
       () => this.lastDispatchedActionId,
     );
     this.agentSubscription = this.agent.subscribe(subscriber);
