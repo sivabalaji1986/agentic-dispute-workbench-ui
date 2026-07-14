@@ -1,5 +1,13 @@
 # agentic-dispute-workbench-ui — Design
 
+> **2026-07-14 amendment (hardening pass):** New §3.6 "Inbound payload
+> validation" documents that the client validates every inbound `progress`,
+> `a2ui`, `STATE_SNAPSHOT`, and `STATE_DELTA` payload against Zod schemas
+> before acting on it, with fixed caps (`MAX_COMPONENTS_PER_UPDATE=20`,
+> `MAX_CHECKLIST_ITEMS=20`, `MAX_ACTIONS=10`, `MAX_PROGRESS_TEXT=500`). These
+> limits are load-bearing — a backend payload that exceeds them is rejected,
+> not truncated.
+
 > **2026-07-14 amendment:** §4.1's `checklistId`/`actionsId` composition fields
 > (previously a trailing addendum) are now the documented, `[convention — frozen]`
 > shape of `DecisionCard`, and §4's example payload is the actual three-entry mock
@@ -201,6 +209,32 @@ this: if a `createSurface` arrives for a `surfaceId` that already exists in the 
 recreating the surface. This matters because the preview, approval, and cancel runs all
 continue the same surface (§3.3) — none of them should resend `createSurface`, but the
 client tolerates it defensively if one does.
+
+### 3.6 Inbound payload validation
+
+**[convention — frozen]** Every inbound `progress` and `a2ui` `CUSTOM` event
+value, and every `STATE_SNAPSHOT`/`STATE_DELTA` payload, is validated against
+a Zod schema (`src/agui/validation.ts`) before the client acts on it —
+including in mock mode, which runs through the identical validation code as
+the live path. A payload that fails validation is dropped (never applied,
+never thrown into React) and logged as a redacted summary (event type + the
+first Zod issue path only — never the raw payload). The backend must respect
+these fixed caps:
+
+| Cap                        | Value | Applies to                                   |
+| --------------------------- | ----- | --------------------------------------------- |
+| `MAX_COMPONENTS_PER_UPDATE` | 20    | `updateComponents.components.length`          |
+| `MAX_CHECKLIST_ITEMS`       | 20    | `EvidenceChecklist.items.length`              |
+| `MAX_ACTIONS`               | 10    | `NextActions.actions.length`                  |
+| `MAX_PROGRESS_TEXT`         | 500   | `progress.text.length` (also must be non-empty) |
+
+`surfaceId` must match `^[a-zA-Z0-9_-]{1,64}$` on every message that carries
+one. `progress.source` must be one of `orchestrator`/`case-review`/`policy` —
+an unrecognized source is rejected, not passed through. Component props for
+the five catalog types are validated against the same schemas the catalog
+itself renders against (`src/components/catalog/schemas.ts`); a component
+type outside the closed catalog is *not* rejected here — it is intentionally
+left to the existing `UnknownComponentFallback` safety net (§4.2).
 
 ## 4. A2UI catalog
 
