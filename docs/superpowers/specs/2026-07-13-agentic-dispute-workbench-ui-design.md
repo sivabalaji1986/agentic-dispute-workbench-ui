@@ -1,5 +1,11 @@
 # agentic-dispute-workbench-ui — Design
 
+> **2026-07-14 amendment (final pass):** New §3.3 item 4 documents that
+> approval execution is idempotent server-side, keyed by the same
+> `(threadId, surfaceId)` pending-approval state as item 3 — required now
+> that the frontend's retry affordance (`WorkbenchSession.retry()`) can
+> resend the same `approve_task_creation` action after a transport failure.
+
 > **2026-07-14 amendment (hardening pass):** New §3.7 "Error handling and
 > status model" documents `WorkbenchError` and the connection-status enum
 > change (`disconnected`/`finished` replaced by `awaiting-approval` /
@@ -167,6 +173,16 @@ This has consequences the backend must honor:
    (`forwardedProps.a2uiAction`, carrying `sourceComponentId` and the originating
    `surfaceId`) is how the backend correlates "this approval-or-cancel" with "the
    preview I showed."
+4. **Approval execution is idempotent server-side, keyed by that same
+   `(threadId, surfaceId)` pending-approval state.** **[convention — frozen]**
+   If an `approve_task_creation` action arrives for an approval that has
+   already executed — for example, a client retry after a mid-run transport
+   failure, where the write completed but the client never saw
+   `RUN_FINISHED` — the backend must not write again. It re-emits the
+   current terminal state (`TaskCreatedCard`, via `updateComponents` on the
+   existing surface) for that surface instead. This is what makes the
+   frontend's "retry the last operation, not the whole workflow" behavior
+   safe: a duplicate approve is a no-op observation, not a duplicate write.
 
 ### 3.4 A2UI client actions (button clicks)
 

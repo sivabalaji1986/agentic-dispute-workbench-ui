@@ -269,6 +269,10 @@ ambiguous.
 - **Cancel is a real, server-driven run** (§3.4.1), not a client-side revert — the
   backend must respond to a `cancel_task_creation` action with an `updateComponents` that
   restores the decision view.
+- **Approval execution is idempotent server-side** (§3.3, keyed by the same
+  `(threadId, surfaceId)` pending-approval state) — a retried
+  `approve_task_creation` after a transport failure must not double-write;
+  the backend re-emits the current terminal state instead.
 - **Action ids are allow-listed.** The client only ever dispatches
   `create_evidence_request_task`, `approve_task_creation`,
   `cancel_task_creation`, `escalate_to_reviewer`, or `save_case_note` from
