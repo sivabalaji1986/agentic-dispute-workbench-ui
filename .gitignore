@@ -7,3 +7,4 @@ dist-ssr
 *.tsbuildinfo
 tmp
 .worktrees/
+.superpowers/
