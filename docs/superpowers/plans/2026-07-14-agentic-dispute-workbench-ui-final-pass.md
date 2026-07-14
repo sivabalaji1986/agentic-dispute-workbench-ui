@@ -26,13 +26,15 @@
 ### Task 1: B2 — JSON Patch safety
 
 **Files:**
+
 - Modify: `src/agui/bridge.ts`
 - Modify: `src/agui/bridge.test.ts`
 
 **Interfaces:**
+
 - No signature changes. `onStateDeltaEvent`'s body gains a try/catch around `applyPatch`.
 
-Today, `onStateDeltaEvent` validates the delta's *shape* with `validateStateDelta` (Zod: each op has the right structural fields), but `applyPatch(stateDoc, ops, true, false)` can still throw at runtime for a structurally-valid-but-inapplicable patch — e.g. `replace`/`remove` against a path that doesn't exist in `stateDoc`, or a failed `test` op. Nothing catches that throw today, so it propagates out of the AG-UI event handler uncaught. This task wraps it and routes the failure through the same `reportProtocolError` path Task 2 of the hardening pass already built (log redacted, `protocolError` store field set, state document left unchanged).
+Today, `onStateDeltaEvent` validates the delta's _shape_ with `validateStateDelta` (Zod: each op has the right structural fields), but `applyPatch(stateDoc, ops, true, false)` can still throw at runtime for a structurally-valid-but-inapplicable patch — e.g. `replace`/`remove` against a path that doesn't exist in `stateDoc`, or a failed `test` op. Nothing catches that throw today, so it propagates out of the AG-UI event handler uncaught. This task wraps it and routes the failure through the same `reportProtocolError` path Task 2 of the hardening pass already built (log redacted, `protocolError` store field set, state document left unchanged).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -115,12 +117,14 @@ git commit -m "fix: wrap STATE_DELTA patch application so an inapplicable patch 
 ### Task 2: B1 + B3 + B5 — dispatch-failure handling, retry-the-operation, abort-on-dispose
 
 **Files:**
+
 - Modify: `src/agui/workbenchSession.ts`
 - Modify: `src/agui/workbenchSession.test.ts`
 - Modify: `src/agui/client.ts`
 - Modify: `src/components/LiveProgressPanel.tsx`
 
 **Interfaces:**
+
 - `WorkbenchSession` gains: private `lastRunInput: { forwardedProps?: { a2uiAction: unknown } }` (replaces the standalone `lastDispatchedActionId` field — derived from `lastRunInput` instead, see below); private `issueRun(input)` (replaces `runInitial()`); public `retry()` (replaces `reconnect()`); `dispose()` gains `this.agent.abortRun()` as its first statement.
 - `src/agui/client.ts` renames its exported `reconnect()` to `retry()`, with a documented fallback: if no session exists (defensive — see rationale below), it re-starts a case with the store's last submitted `disputeText` rather than doing nothing.
 - `LiveProgressPanel.tsx` imports `retry` instead of `reconnect`; the failed-state button text changes from "Reconnect" to "Retry".
@@ -129,9 +133,9 @@ This task combines three brief items (B1, B3, B5) because all three touch the sa
 
 **Design rationale (read before implementing):**
 
-- **B1** wants `dispatchAction()` (currently `void this.agent.runAgent({...})` — no `.catch`, a real unhandled-rejection bug) and the session's initial run to both catch `runAgent()` rejections and map them to a retryable `WorkbenchError` with `code: 'TRANSPORT'`. The brief's literal wording names both `dispatchAction()` and `startCase()` (i.e. `WorkbenchSession.start()`, which today calls a private `runInitial()` using the hardening pass's `'backend_unreachable'` code) as needing the `'TRANSPORT'` code — this is a deliberate simplification superseding the hardening pass's more granular `'backend_unreachable'` string for this specific case (the design doc never froze that literal string in §3.7's normative text, only the *cases* that produce transport errors, so this is safe to change). `'sse_interrupted'` (from `onRunFailed`) and `'run_error'` (from a `RUN_ERROR` event) are untouched — B1 is specifically about `runAgent()`'s own promise rejecting, a different failure mode from those two.
-- **B3** wants a retry to re-send the *same* `runAgent` input (empty for the initial review, or `{forwardedProps: {a2uiAction}}` for a dispatched action) rather than always restarting as a fresh review. The cleanest implementation: track one `lastRunInput` field, set every time a run is issued (by the new shared `issueRun()` helper both `start()` and `dispatchAction()` call), and have `retry()` re-issue that same value with a fresh agent/subscription on the same `threadId`. This also lets `getLastDispatchedActionId` (used by `bridge.ts`'s status-derivation table) become a *derived* getter off `lastRunInput` instead of a separately-maintained field — one source of truth instead of two fields that could drift.
-- **Button label:** the brief says the failed-state action should read "Retry" and "fall back to 'Start over' only if no last input exists." In this codebase, `lastRunInput` is *always* set (defaults to `{}` in the constructor, meaning "retry the review") — the only case where there's truly no session to retry at all is if `client.ts`'s `currentSession` is `null`, which the failed-state UI can't actually reach in normal use (the button only renders once `connectionStatus === 'failed'`, which requires a session to have started). Rather than build a rarely-reachable label switch, this task keeps the button label a single, honest "Retry" and gives `client.retry()` a defensive fallback (start a new case with the last submitted dispute text) for the `currentSession === null` case, so the *behavior* matches "falls back to starting over" even though the *label* doesn't visually branch. This is a deliberate scope-trim — flag it in your report rather than silently deciding, but implement it as described unless you find a concrete reason the fallback is actually reachable in this codebase (it currently is not).
+- **B1** wants `dispatchAction()` (currently `void this.agent.runAgent({...})` — no `.catch`, a real unhandled-rejection bug) and the session's initial run to both catch `runAgent()` rejections and map them to a retryable `WorkbenchError` with `code: 'TRANSPORT'`. The brief's literal wording names both `dispatchAction()` and `startCase()` (i.e. `WorkbenchSession.start()`, which today calls a private `runInitial()` using the hardening pass's `'backend_unreachable'` code) as needing the `'TRANSPORT'` code — this is a deliberate simplification superseding the hardening pass's more granular `'backend_unreachable'` string for this specific case (the design doc never froze that literal string in §3.7's normative text, only the _cases_ that produce transport errors, so this is safe to change). `'sse_interrupted'` (from `onRunFailed`) and `'run_error'` (from a `RUN_ERROR` event) are untouched — B1 is specifically about `runAgent()`'s own promise rejecting, a different failure mode from those two.
+- **B3** wants a retry to re-send the _same_ `runAgent` input (empty for the initial review, or `{forwardedProps: {a2uiAction}}` for a dispatched action) rather than always restarting as a fresh review. The cleanest implementation: track one `lastRunInput` field, set every time a run is issued (by the new shared `issueRun()` helper both `start()` and `dispatchAction()` call), and have `retry()` re-issue that same value with a fresh agent/subscription on the same `threadId`. This also lets `getLastDispatchedActionId` (used by `bridge.ts`'s status-derivation table) become a _derived_ getter off `lastRunInput` instead of a separately-maintained field — one source of truth instead of two fields that could drift.
+- **Button label:** the brief says the failed-state action should read "Retry" and "fall back to 'Start over' only if no last input exists." In this codebase, `lastRunInput` is _always_ set (defaults to `{}` in the constructor, meaning "retry the review") — the only case where there's truly no session to retry at all is if `client.ts`'s `currentSession` is `null`, which the failed-state UI can't actually reach in normal use (the button only renders once `connectionStatus === 'failed'`, which requires a session to have started). Rather than build a rarely-reachable label switch, this task keeps the button label a single, honest "Retry" and gives `client.retry()` a defensive fallback (start a new case with the last submitted dispute text) for the `currentSession === null` case, so the _behavior_ matches "falls back to starting over" even though the _label_ doesn't visually branch. This is a deliberate scope-trim — flag it in your report rather than silently deciding, but implement it as described unless you find a concrete reason the fallback is actually reachable in this codebase (it currently is not).
 - **B5** wants `dispose()` to abort the in-flight run before unsubscribing. One line, added to the existing `dispose()`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -434,15 +438,17 @@ import { retry } from '../agui/client';
 ```
 
 ```tsx
-        {error?.retryable !== false && (
-          <button
-            type="button"
-            onClick={retry}
-            className="font-medium text-pending underline decoration-pending/40 underline-offset-2 hover:decoration-pending"
-          >
-            Retry
-          </button>
-        )}
+{
+  error?.retryable !== false && (
+    <button
+      type="button"
+      onClick={retry}
+      className="font-medium text-pending underline decoration-pending/40 underline-offset-2 hover:decoration-pending"
+    >
+      Retry
+    </button>
+  );
+}
 ```
 
 - [ ] **Step 6: Run tests to verify they pass**
@@ -466,6 +472,7 @@ git commit -m "feat: catch dispatch/initial-run rejections (B1), retry the faile
 ### Task 3: B4 — approval idempotency spec amendment
 
 **Files:**
+
 - Modify: `docs/superpowers/specs/2026-07-13-agentic-dispute-workbench-ui-design.md`
 - Modify: `README.md`
 
@@ -525,12 +532,14 @@ git commit -m "docs: amend design doc with approval idempotency contract (B4)"
 ### Task 4: B6 — cap progress history
 
 **Files:**
+
 - Modify: `src/agui/validation.ts`
 - Modify: `src/state/workbenchStore.ts`
 - Modify: `src/state/workbenchStore.test.ts`
 - Modify: `src/components/LiveProgressPanel.tsx`
 
 **Interfaces:**
+
 - Produces (`validation.ts`): `export const MAX_PROGRESS_LINES = 1000;` (alongside the existing caps).
 - `ProgressLine.source` becomes `AgentSource | null` — `null` marks the one non-agent "earlier entries trimmed" ledger row.
 
@@ -659,7 +668,7 @@ with a conditional that renders the marker row separately and skips the rest of 
                   >
 ```
 
-Close the added ternary's parenthesis correctly around the existing entry body (the marker branch above, the existing per-agent JSX below, both ending the `.map()` callback with `),`  ` )}` as appropriate — read the current file's exact JSX structure before editing so the braces/parens balance; this is a structural edit, not a text replace, so verify it compiles rather than trusting the snippet's exact whitespace).
+Close the added ternary's parenthesis correctly around the existing entry body (the marker branch above, the existing per-agent JSX below, both ending the `.map()` callback with `),` ` )}` as appropriate — read the current file's exact JSX structure before editing so the braces/parens balance; this is a structural edit, not a text replace, so verify it compiles rather than trusting the snippet's exact whitespace).
 
 `aria-hidden` on the marker matches the brief's "aria-hidden marker row, not announced" requirement — it's decorative ledger furniture, not new information a screen reader user needs (the timeline's `role="log"`/`aria-live="polite"` from the hardening pass already announces real entries; a "some old stuff got trimmed" row isn't actionable).
 
@@ -678,6 +687,7 @@ git commit -m "feat: cap progress-line history at MAX_PROGRESS_LINES with a sing
 ### Task 5: B7 — CI tightening
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 
 - [ ] **Step 1: Read the current file, then apply the three additions**
@@ -738,6 +748,7 @@ git commit -m "docs: rename Reconnect to Retry in prose to match the renamed UI 
 ### Task 7: Section A — README restructure
 
 **Files:**
+
 - Modify: `README.md`
 
 Read the full current `README.md` before starting (it should be ~301 lines as of the end of Task 3, after B4's one-line mirror addition — confirm with `wc -l README.md`). This task inserts two new sections and reorders two existing ones; it does not move the existing hero image / quick-start / status table (those stay exactly where they are, immediately after the title and badges, before `## What this is` — the A1 instruction to place the new section "immediately after 'What this is'" is unambiguous about that anchor point, and no other step in this task asks to relocate the hero/quick-start content).
@@ -786,8 +797,8 @@ here, and there isn't meant to be one.
 The same system, as an architecture diagram (per the platform spec — the
 two write/read paths from the specialists are deliberately separate, not
 merged into one generic "backend call"):
-
 ```
+
             React UI  (this repo)
                │
                │  AG-UI (SSE) — progress, state, A2UI payloads
@@ -797,12 +808,15 @@ merged into one generic "backend call"):
                │  A2A (parallel fan-out)  ▼
      ┌─────────┴─────────┐          Case system
      ▼                   ▼          (task + audit)
-Case Review Agent   Policy Agent
-     │                   │
-     │ MCP (reads)       │ RAG
-     ▼                   ▼
-Claims / Case DB    Policy document index
+
+Case Review Agent Policy Agent
+│ │
+│ MCP (reads) │ RAG
+▼ ▼
+Claims / Case DB Policy document index
+
 ```
+
 ```
 
 (The ASCII diagram is given verbatim in the brief and must not be altered — reproduce it exactly, including spacing, inside a fenced code block as shown.)
