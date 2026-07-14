@@ -220,7 +220,8 @@ dropped and logged, never applied and never thrown into the UI. See
 Two kinds of error surface independently, both client-only signals stored
 as `transportError`/`protocolError` in the workbench store: a transport
 error (backend unreachable, a dropped connection, a `RUN_ERROR` event)
-shows in the timeline header with a Reconnect affordance when retryable; a
+shows in the timeline header with a Retry affordance (re-sends the exact
+operation that failed, not a fresh review) when retryable; a
 protocol error (a payload that failed inbound validation) shows as a
 decision-panel notice. `connectionStatus` is one of `idle`, `connecting`,
 `streaming`, `awaiting-approval`, `completed`, `cancelled`, or `failed`,

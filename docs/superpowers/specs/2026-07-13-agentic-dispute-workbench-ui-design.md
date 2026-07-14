@@ -158,8 +158,8 @@ This has consequences the backend must honor:
 1. **`threadId` is reused across every run in a case session.** The client generates
    (or receives, in `RUN_STARTED.threadId`) one `threadId` when the case is first
    submitted and passes that same `threadId` on every subsequent `runAgent()` call for
-   that case (action clicks, retries after reconnect). The Java orchestrator uses
-   `threadId` as the session correlation key.
+   that case (action clicks, and retries of a failed run via the Retry affordance).
+   The Java orchestrator uses `threadId` as the session correlation key.
 2. **The A2UI `surfaceId` persists across runs within a session.** The decision panel's
    surface (e.g. `surfaceId: "case-D-10291"`) is created once — by whichever run first
    has UI to show (§3.5) — and is **updated** (`updateComponents`/`updateDataModel`),
@@ -425,9 +425,9 @@ Three-zone single page (Tailwind, light theme, dense enterprise-console aestheti
    Agent), strict arrival order, timestamped, auto-scroll with pause-on-hover.
 3. **Decision panel** — `A2uiSurface` for the session's one surface.
 
-Connection states: connecting → streaming → failed mid-run (reconnect button, no
-silent infinite retry) → awaiting-approval / completed / cancelled / idle, per §3.7's
-status-derivation table.
+Connection states: connecting → streaming → failed mid-run (Retry button re-sends the
+last operation, no silent infinite retry) → awaiting-approval / completed / cancelled
+/ idle, per §3.7's status-derivation table.
 
 ## 6. State management
 
