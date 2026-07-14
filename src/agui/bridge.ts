@@ -136,8 +136,19 @@ export function createWorkbenchAgentSubscriber(
         reportProtocolError(validated.failure);
         return;
       }
-      const result = applyPatch(stateDoc, validated.data as Operation[], true, false);
-      stateDoc = result.newDocument;
+      try {
+        const result = applyPatch(stateDoc, validated.data as Operation[], true, false);
+        stateDoc = result.newDocument;
+      } catch {
+        // Structurally valid per Zod, but inapplicable at runtime (e.g. a
+        // replace/remove against a path that doesn't exist, or a failed
+        // test op) — fast-json-patch throws for this, Zod can't catch it
+        // ahead of time. Same protocol-error path as a shape failure;
+        // stateDoc is left exactly as it was (the failed applyPatch call
+        // never touched it, since mutateDocument is false).
+        reportProtocolError({ eventType: 'state_delta', issuePath: '(patch application)' });
+        return;
+      }
       syncEvidenceReadiness();
     },
     onCustomEvent({ event }) {

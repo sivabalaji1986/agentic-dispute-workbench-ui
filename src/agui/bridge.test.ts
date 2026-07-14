@@ -327,4 +327,24 @@ describe('createWorkbenchAgentSubscriber', () => {
     expect(() => workbenchAgentSubscriber.onStateDeltaEvent?.(fakeParams(badDelta))).not.toThrow();
     expect(useWorkbenchStore.getState().evidenceReadiness).toBeNull();
   });
+
+  it('drops an inapplicable STATE_DELTA patch instead of throwing, leaving state unchanged', () => {
+    const snapshot: StateSnapshotEvent = {
+      type: EventType.STATE_SNAPSHOT,
+      snapshot: { evidenceReadiness: null },
+    };
+    const badDelta: StateDeltaEvent = {
+      type: EventType.STATE_DELTA,
+      // Structurally valid per Zod (op/path/value all present), but
+      // inapplicable: /nonexistent/deep/path doesn't exist in stateDoc, so
+      // fast-json-patch's applyPatch throws at runtime, not at Zod-validation
+      // time — this is exactly the gap Task 1 (B2) closes.
+      delta: [{ op: 'replace', path: '/nonexistent/deep/path', value: 'x' }],
+    };
+    workbenchAgentSubscriber.onStateSnapshotEvent?.(fakeParams(snapshot));
+    expect(() => workbenchAgentSubscriber.onStateDeltaEvent?.(fakeParams(badDelta))).not.toThrow();
+    expect(useWorkbenchStore.getState().evidenceReadiness).toBeNull();
+    expect(protocolErrors).toHaveLength(1);
+    expect(protocolErrors[0]).toMatchObject({ eventType: 'state_delta' });
+  });
 });
