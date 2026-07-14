@@ -1,5 +1,12 @@
 # agentic-dispute-workbench-ui — Design
 
+> **2026-07-14 amendment (hardening pass):** New note in §4.1 documents the
+> frozen action-id allow-list (`src/agui/actionIds.ts`): the backend may only
+> ever expect `create_evidence_request_task`, `approve_task_creation`,
+> `cancel_task_creation`, `escalate_to_reviewer`, or `save_case_note` to be
+> dispatched by `NextActions`. Any other id renders disabled and is never
+> sent.
+
 > **2026-07-14 amendment (hardening pass):** New §3.6 "Inbound payload
 > validation" documents that the client validates every inbound `progress`,
 > `a2ui`, `STATE_SNAPSHOT`, and `STATE_DELTA` payload against Zod schemas
@@ -328,6 +335,17 @@ client-side-interception pattern as `ApprovalPreview`'s `onEdit` (§3.4.1) — s
 "not in demo scope" notice instead. The backend will never receive an action named
 `escalate_to_reviewer` or `save_case_note`; only `create_evidence_request_task` (and
 whatever future ids the backend adds outside this reserved pair) actually reach it.
+
+**[convention — frozen] Action-ID allow-list:** dispatch is keyed by id, never
+by label — `NextActions.actions[].label` is display-only. The client
+maintains a single frozen list of dispatchable ids
+(`src/agui/actionIds.ts`): `create_evidence_request_task`,
+`approve_task_creation`, `cancel_task_creation`, `escalate_to_reviewer`,
+`save_case_note`. Any `NextActions` entry whose `id` is outside this list
+renders as a disabled button ("Unknown action — not dispatchable") and is
+never dispatched, regardless of its `label`. Adding a new dispatchable action
+id is a contract change and requires updating this list and this section, not
+just the backend payload.
 
 ### 4.2 Closed catalog / unknown-component fallback
 

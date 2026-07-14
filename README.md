@@ -229,6 +229,12 @@ ambiguous.
 - **Cancel is a real, server-driven run** (§3.4.1), not a client-side revert — the
   backend must respond to a `cancel_task_creation` action with an `updateComponents` that
   restores the decision view.
+- **Action ids are allow-listed.** The client only ever dispatches
+  `create_evidence_request_task`, `approve_task_creation`,
+  `cancel_task_creation`, `escalate_to_reviewer`, or `save_case_note` from
+  `NextActions`. An action id outside that list renders disabled and never
+  reaches the backend — adding a new action id means updating
+  `src/agui/actionIds.ts` and the design doc, not just the payload.
 
 **Versions:** A2UI spec pinned to **v0.9** (spec is evolving; do not assume forward
 compatibility with v1.0) — `@a2ui/react@0.10.1` / `@a2ui/web_core@0.10.4`.
