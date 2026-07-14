@@ -70,6 +70,17 @@ export class WorkbenchSession {
       }
       this.dispatchAction(validated.data);
     });
+    this.runInitial();
+  }
+
+  /**
+   * Issues the initial (non-forwarded) runAgent({}) call shared by start()
+   * and reconnect(): resets lastDispatchedActionId so a stale action from a
+   * prior run can't leak into this run's status derivation, and surfaces a
+   * 'backend_unreachable' transport error (with a 'failed' connection
+   * status) if the backend never responds.
+   */
+  private runInitial(): void {
     this.lastDispatchedActionId = undefined;
     this.agent.runAgent({}).catch((error: Error) => {
       useWorkbenchStore.getState().setTransportError({
@@ -95,7 +106,7 @@ export class WorkbenchSession {
     this.agent = this.createAgent();
     this.subscribeAgent();
     useWorkbenchStore.getState().setConnectionStatus('connecting');
-    void this.agent.runAgent({});
+    this.runInitial();
   }
 
   abort(): void {
