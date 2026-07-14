@@ -2,6 +2,7 @@ import { HttpAgent, type AgentSubscriber } from '@ag-ui/client';
 import { MockAgent } from '../mock/mockAgent';
 import { workbenchAgentSubscriber, resetBridgeState } from './bridge';
 import { useWorkbenchStore } from '../state/workbenchStore';
+import { validateForwardedAction, logValidationFailure } from './validation';
 
 const isMock = import.meta.env.VITE_MOCK !== 'false';
 const orchestratorUrl = import.meta.env.VITE_ORCHESTRATOR_URL ?? 'http://localhost:8080/agui';
@@ -20,8 +21,19 @@ let currentThreadId: string | null = null;
 // per page load), so its action listener is wired exactly once here rather
 // than per-run. Every A2UI button click becomes a new AG-UI run on the same
 // threadId, per design doc §3.4.
+//
+// Actions dispatched here always come from the A2UI library's own internal
+// dispatch machinery (already shaped as A2uiClientAction), so this is
+// defense-in-depth rather than a behavior change for any currently-passing
+// path — it closes the gap where a future catalog change could otherwise
+// forward a malformed action to the backend unnoticed.
 useWorkbenchStore.getState().processor.model.onAction.subscribe((action) => {
-  void agent?.runAgent({ forwardedProps: { a2uiAction: action } });
+  const validated = validateForwardedAction(action);
+  if (!validated.success) {
+    logValidationFailure(validated.failure);
+    return;
+  }
+  void agent?.runAgent({ forwardedProps: { a2uiAction: validated.data } });
 });
 
 function createAgent(threadId: string): AguiLikeAgent {
