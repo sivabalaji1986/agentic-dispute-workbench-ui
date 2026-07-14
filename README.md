@@ -32,16 +32,66 @@ approving the one write action that actually changes anything. Nothing is writte
 the case system without an explicit human approval on a screen that says, in as many
 words, "nothing has been written yet."
 
-This repo is the frontend only — the AG-UI client and A2UI renderer host. The backend
-(`agentic-dispute-workbench-platform`, Java/Spring) does not exist yet; it implements the
-wire contract this README summarizes and
-[`docs/superpowers/specs/2026-07-13-agentic-dispute-workbench-ui-design.md`](docs/superpowers/specs/2026-07-13-agentic-dispute-workbench-ui-design.md)
-documents in full. Until it exists, this repo is fully buildable, runnable, and demoable
-standalone via a scripted mock mode — see [Running it](#running-it).
+This repo is the frontend only — for a backend (`agentic-dispute-workbench-platform`, Java/Spring) that doesn't exist yet; the wire contract it will implement is summarized here and documented in full in the [design doc](docs/superpowers/specs/2026-07-13-agentic-dispute-workbench-ui-design.md). Until it exists, run this repo standalone via a scripted mock mode — see [Running it](#running-it).
+
+## How the workbench works
+
+Picture a dispute ops analyst. A customer reports: "I paid SGD 250 for an
+item, but I never received it. The merchant says it was delivered."
+
+1. **Submit** — the analyst pastes in the dispute and clicks one button.
+2. **Watch, don't wait** — progress starts streaming immediately. No
+   spinner; a growing list of what's actually happening.
+3. **Two specialists work in parallel** — one checks the transaction and
+   what's on file; the other checks which policy applies and what evidence
+   it requires.
+4. **Their findings are merged** — what's present versus what's required,
+   reconciled into one picture.
+5. **A decision view appears** — status, an evidence checklist, a
+   recommended next action. Not a paragraph to parse — a structure to scan.
+6. **The analyst clicks "Create Evidence Request Task."** Nothing is
+   written yet.
+7. **A preview appears** — the exact task about to be created, plainly
+   stated.
+8. **Only after approval** is the task created, the case status updated,
+   and the audit entry written.
+
+The analyst never waits behind a spinner, never receives a wall of text to
+parse, and stays in control of every write. [The flow](#the-flow) below is
+the same journey, annotated with the protocol names and wire mechanics that
+make it real.
+
+## Why not a chatbot?
+
+A chatbot answers a question. This workbench runs an operations workflow:
+it shows the work happening in real time, coordinates two specialists in
+parallel, renders the outcome as structured decision UI instead of prose,
+and refuses to write anything until a human approves it. Free-form
+conversation would hide all four of those — there is no chat interface
+here, and there isn't meant to be one.
+
+The same system, as an architecture diagram (per the platform spec — the
+two write/read paths from the specialists are deliberately separate, not
+merged into one generic "backend call"):
+
+```
+            React UI  (this repo)
+               │
+               │  AG-UI (SSE) — progress, state, A2UI payloads
+               ▼
+        Orchestrator Agent ──────────────┐
+               │                          │ MCP (approval-gated write)
+               │  A2A (parallel fan-out)  ▼
+     ┌─────────┴─────────┐          Case system
+     ▼                   ▼          (task + audit)
+Case Review Agent   Policy Agent
+     │                   │
+     │ MCP (reads)       │ RAG
+     ▼                   ▼
+Claims / Case DB    Policy document index
+```
 
 ## The protocols, and where you see each one
-
-Two protocols are visible in this UI; two more happen entirely behind it.
 
 **AG-UI is the live timeline.** Every line in the center panel — "Understanding
 dispute...", "Checking transaction status...", the CASE REVIEW / POLICY / ORCH tags — is
@@ -114,6 +164,9 @@ if a future requirement needs one, that's new scope, not something implied by wh
 here.
 
 ## The flow
+
+The same journey as [How the workbench works](#how-the-workbench-works)
+above, but annotated with what happens on the wire.
 
 Eight steps, each naming which AG-UI run it happens in — session and run mechanics are
 in the [next section](#session-and-surface-model).
