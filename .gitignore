@@ -8,3 +8,4 @@ dist-ssr
 tmp
 .worktrees/
 .superpowers/
+.claude/settings.json
