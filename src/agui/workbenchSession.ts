@@ -101,8 +101,17 @@ export class WorkbenchSession {
    * new review, per B3. Since lastRunInput defaults to {} until an action
    * is dispatched, retrying before any action was ever sent correctly
    * re-runs the review.
+   *
+   * Aborts the outgoing agent's in-flight run FIRST, before replacing it —
+   * same ordering as dispose() (B5). With a real HttpAgent/SSE connection,
+   * the old request can still be executing after the UI has moved on; on
+   * approval specifically, an unaborted old request plus the retry both
+   * reaching the backend would rely entirely on server-side idempotency
+   * (§3.3 item 4) to avoid a double-write. Aborting here removes that
+   * reliance rather than depending on it.
    */
   retry(): void {
+    this.agent.abortRun();
     this.agentSubscription?.unsubscribe();
     this.agent = this.createAgent();
     this.subscribeAgent();

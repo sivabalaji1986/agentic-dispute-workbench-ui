@@ -268,6 +268,27 @@ describe('WorkbenchSession', () => {
     expect(session.threadId).toBe('t-1');
   });
 
+  it('retry() aborts the in-flight run on the outgoing agent before creating a new one', () => {
+    const callOrder: string[] = [];
+    const { agent: firstAgent } = fakeAgent();
+    firstAgent.abortRun = vi.fn(() => callOrder.push('abort'));
+    let agentCount = 0;
+    const session = new WorkbenchSession('t-1', {
+      agentFactory: () => {
+        agentCount += 1;
+        if (agentCount === 1) return firstAgent;
+        callOrder.push('create-new-agent');
+        return fakeAgent().agent;
+      },
+    });
+    session.start();
+
+    session.retry();
+
+    expect(firstAgent.abortRun).toHaveBeenCalledTimes(1);
+    expect(callOrder).toEqual(['abort', 'create-new-agent']);
+  });
+
   it('dispose() aborts the in-flight run before unsubscribing', () => {
     const { agent, subscribers } = fakeAgent();
     const callOrder: string[] = [];
