@@ -15,6 +15,8 @@ function defaultAgentFactory(threadId: string): AguiLikeAgent {
   return isMock ? new MockAgent() : new HttpAgentAdapter({ url: orchestratorUrl, threadId });
 }
 
+type RunInput = { forwardedProps?: { a2uiAction: unknown } };
+
 /**
  * Owns everything a single case session needs: the agent handle, the
  * threadId, a dedicated MessageProcessor + its subscription, and the AG-UI
@@ -28,7 +30,10 @@ export class WorkbenchSession {
   private agentSubscription: { unsubscribe: () => void } | null = null;
   private actionSubscription: { unsubscribe: () => void } | null = null;
   private readonly createAgent: () => AguiLikeAgent;
-  private lastDispatchedActionId: string | undefined;
+  // The single source of truth for "what was the last thing we asked the
+  // agent to do" — both the status-derivation table (via the getter below)
+  // and retry() (B3) read this instead of maintaining a separate field.
+  private lastRunInput: RunInput = {};
 
   constructor(threadId: string, opts: { agentFactory?: () => AguiLikeAgent } = {}) {
     this.threadId = threadId;
@@ -37,11 +42,14 @@ export class WorkbenchSession {
     this.agent = this.createAgent();
   }
 
+  private get lastDispatchedActionId(): string | undefined {
+    const action = this.lastRunInput.forwardedProps?.a2uiAction;
+    return typeof action === 'object' && action !== null && 'name' in action
+      ? String((action as { name: unknown }).name)
+      : undefined;
+  }
+
   private subscribeAgent(): void {
-    // logValidationFailure only logs; createWorkbenchAgentSubscriber's own
-    // reportProtocolError (bridge.ts) is the single place that writes
-    // WorkbenchError into the store, so there is exactly one owner of that
-    // classification logic rather than two copies to keep in sync.
     const subscriber = createWorkbenchAgentSubscriber(
       this.processor,
       logValidationFailure,
@@ -61,23 +69,22 @@ export class WorkbenchSession {
       }
       this.dispatchAction(validated.data);
     });
-    this.runInitial();
+    this.issueRun({});
   }
 
   /**
-   * Issues the initial (non-forwarded) runAgent({}) call shared by start()
-   * and reconnect(): resets lastDispatchedActionId so a stale action from a
-   * prior run can't leak into this run's status derivation, and surfaces a
-   * 'backend_unreachable' transport error (with a 'failed' connection
-   * status) if the backend never responds.
+   * Sends one AG-UI run and remembers its input so a later retry() (B3) can
+   * re-issue the SAME operation instead of restarting the case. Any
+   * rejection (B1) becomes a retryable WorkbenchError, never an unhandled
+   * promise rejection.
    */
-  private runInitial(): void {
-    this.lastDispatchedActionId = undefined;
-    this.agent.runAgent({}).catch((error: Error) => {
+  private issueRun(input: RunInput): void {
+    this.lastRunInput = input;
+    this.agent.runAgent(input).catch((error: Error) => {
       useWorkbenchStore.getState().setTransportError({
-        code: 'backend_unreachable',
-        title: 'Could not reach the orchestrator',
-        message: error.message || 'The backend did not respond to the initial request.',
+        code: 'TRANSPORT',
+        title: input.forwardedProps ? 'Action failed' : 'Could not reach the orchestrator',
+        message: error.message || 'The request could not be completed.',
         retryable: true,
       });
       useWorkbenchStore.getState().setConnectionStatus('failed');
@@ -85,19 +92,22 @@ export class WorkbenchSession {
   }
 
   dispatchAction(a2uiAction: unknown): void {
-    this.lastDispatchedActionId =
-      typeof a2uiAction === 'object' && a2uiAction !== null && 'name' in a2uiAction
-        ? String((a2uiAction as { name: unknown }).name)
-        : undefined;
-    void this.agent.runAgent({ forwardedProps: { a2uiAction } });
+    this.issueRun({ forwardedProps: { a2uiAction } });
   }
 
-  reconnect(): void {
+  /**
+   * Re-issues the last runAgent input (review, preview, approval, or
+   * cancel) on the SAME threadId with a fresh agent/subscription — never a
+   * new review, per B3. Since lastRunInput defaults to {} until an action
+   * is dispatched, retrying before any action was ever sent correctly
+   * re-runs the review.
+   */
+  retry(): void {
     this.agentSubscription?.unsubscribe();
     this.agent = this.createAgent();
     this.subscribeAgent();
     useWorkbenchStore.getState().setConnectionStatus('connecting');
-    this.runInitial();
+    this.issueRun(this.lastRunInput);
   }
 
   abort(): void {
@@ -105,6 +115,10 @@ export class WorkbenchSession {
   }
 
   dispose(): void {
+    // B5: abort whatever's in flight before tearing down subscriptions, so
+    // a stray late event from an about-to-be-replaced agent can't sneak
+    // through in the gap between "still subscribed" and "unsubscribed."
+    this.agent.abortRun();
     this.agentSubscription?.unsubscribe();
     this.agentSubscription = null;
     this.actionSubscription?.unsubscribe();

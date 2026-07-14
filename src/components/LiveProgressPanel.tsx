@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWorkbenchStore, type WorkbenchError } from '../state/workbenchStore';
 import type { AgentSource } from '../agui/events';
-import { reconnect } from '../agui/client';
+import { retry } from '../agui/client';
 
 const MARKER_COLOR: Record<AgentSource, string> = {
   orchestrator: 'bg-orchestrator',
@@ -127,10 +127,10 @@ function ConnectionStrip({ status, error }: { status: string; error: WorkbenchEr
         {error?.retryable !== false && (
           <button
             type="button"
-            onClick={reconnect}
+            onClick={retry}
             className="font-medium text-pending underline decoration-pending/40 underline-offset-2 hover:decoration-pending"
           >
-            Reconnect
+            Retry
           </button>
         )}
       </div>

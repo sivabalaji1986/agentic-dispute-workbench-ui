@@ -102,10 +102,10 @@ describe('WorkbenchSession', () => {
     await vi.waitFor(() => {
       expect(useWorkbenchStore.getState().connectionStatus).toBe('failed');
     });
-    expect(useWorkbenchStore.getState().transportError?.code).toBe('backend_unreachable');
+    expect(useWorkbenchStore.getState().transportError?.code).toBe('TRANSPORT');
   });
 
-  it("sets a retryable backend_unreachable transport error when reconnect()'s runAgent rejects", async () => {
+  it("sets a retryable TRANSPORT error when retry()'s runAgent rejects", async () => {
     const agent: AguiLikeAgent = {
       threadId: 'fake',
       subscribe: () => ({ unsubscribe: () => {} }),
@@ -113,14 +113,14 @@ describe('WorkbenchSession', () => {
       abortRun: vi.fn(),
     };
     const session = new WorkbenchSession('t-1', { agentFactory: () => agent });
-    session.reconnect();
+    session.retry();
     await vi.waitFor(() => {
       expect(useWorkbenchStore.getState().connectionStatus).toBe('failed');
     });
-    expect(useWorkbenchStore.getState().transportError?.code).toBe('backend_unreachable');
+    expect(useWorkbenchStore.getState().transportError?.code).toBe('TRANSPORT');
   });
 
-  it('reconnect() resets lastDispatchedActionId so a fresh run is not mistaken for a cancellation', () => {
+  it('retry() preserves the derived last-action-id so a resent cancellation is correctly reported as cancelled, not lost as a fresh review', () => {
     const agents: ReturnType<typeof fakeAgent>[] = [];
     const session = new WorkbenchSession('t-1', {
       agentFactory: () => {
@@ -132,7 +132,7 @@ describe('WorkbenchSession', () => {
     session.start();
     session.dispatchAction({ name: 'cancel_task_creation' });
 
-    session.reconnect();
+    session.retry();
 
     const subscriber = agents[agents.length - 1].subscribers[0];
     expect(subscriber).toBeDefined();
@@ -186,6 +186,109 @@ describe('WorkbenchSession', () => {
     };
     subscriber.onRunFinishedEvent?.({ ...params(finishedEvent), outcome: 'success' } as never);
 
-    expect(useWorkbenchStore.getState().connectionStatus).toBe('idle');
+    // Under B3, retry() re-issues lastRunInput as-is (the cancel_task_creation
+    // action), so a successful RUN_FINISHED after retry() is genuinely a
+    // completed cancellation — not a fresh review to be reported as 'idle'.
+    expect(useWorkbenchStore.getState().connectionStatus).toBe('cancelled');
+  });
+
+  it('dispatchAction() catches a rejected runAgent and surfaces a retryable TRANSPORT error without an unhandled rejection', async () => {
+    const agent: AguiLikeAgent = {
+      threadId: 'fake',
+      subscribe: () => ({ unsubscribe: () => {} }),
+      runAgent: vi
+        .fn()
+        .mockResolvedValueOnce({ result: undefined }) // start()'s initial call succeeds
+        .mockRejectedValueOnce(new Error('dispatch failed')), // the dispatched action fails
+      abortRun: vi.fn(),
+    };
+    const session = new WorkbenchSession('t-1', { agentFactory: () => agent });
+    session.start();
+    session.dispatchAction({ name: 'approve_task_creation' });
+    await vi.waitFor(() => {
+      expect(useWorkbenchStore.getState().connectionStatus).toBe('failed');
+    });
+    expect(useWorkbenchStore.getState().transportError?.code).toBe('TRANSPORT');
+    expect(useWorkbenchStore.getState().transportError?.retryable).toBe(true);
+  });
+
+  it('retry() re-sends the same dispatched action (not a fresh review) on the same threadId after a failure', async () => {
+    const agents: ReturnType<typeof fakeAgent>[] = [];
+    let callCount = 0;
+    const session = new WorkbenchSession('t-1', {
+      agentFactory: () => {
+        const created = fakeAgent();
+        created.agent.runAgent = vi.fn().mockImplementation(() => {
+          callCount += 1;
+          // Fail only the dispatched preview-run call (the 2nd runAgent call
+          // overall); every other call (start()'s initial call, and the
+          // retry) succeeds.
+          return callCount === 2
+            ? Promise.reject(new Error('preview run failed'))
+            : Promise.resolve({ result: undefined });
+        });
+        agents.push(created);
+        return created.agent;
+      },
+    });
+    session.start();
+    session.dispatchAction({ name: 'create_evidence_request_task' });
+    await vi.waitFor(() => {
+      expect(useWorkbenchStore.getState().connectionStatus).toBe('failed');
+    });
+
+    session.retry();
+
+    const retryAgent = agents[agents.length - 1].agent;
+    expect(retryAgent.runAgent).toHaveBeenCalledWith({
+      forwardedProps: { a2uiAction: { name: 'create_evidence_request_task' } },
+    });
+    expect(session.threadId).toBe('t-1'); // same threadId — no new session/case
+  });
+
+  it('retry() re-runs a failed initial review without generating a new threadId when nothing was dispatched yet', async () => {
+    const agent: AguiLikeAgent = {
+      threadId: 'fake',
+      subscribe: () => ({ unsubscribe: () => {} }),
+      runAgent: vi.fn().mockRejectedValue(new Error('network down')),
+      abortRun: vi.fn(),
+    };
+    const session = new WorkbenchSession('t-1', { agentFactory: () => agent });
+    session.start();
+    await vi.waitFor(() => {
+      expect(useWorkbenchStore.getState().connectionStatus).toBe('failed');
+    });
+
+    session.retry();
+
+    await vi.waitFor(() => {
+      expect(agent.runAgent).toHaveBeenCalledTimes(2);
+    });
+    expect(agent.runAgent).toHaveBeenLastCalledWith({});
+    expect(session.threadId).toBe('t-1');
+  });
+
+  it('dispose() aborts the in-flight run before unsubscribing', () => {
+    const { agent, subscribers } = fakeAgent();
+    const callOrder: string[] = [];
+    agent.abortRun = vi.fn(() => callOrder.push('abort'));
+    const originalSubscribe = agent.subscribe.bind(agent);
+    agent.subscribe = (subscriber) => {
+      const result = originalSubscribe(subscriber);
+      return {
+        unsubscribe: () => {
+          callOrder.push('unsubscribe');
+          result.unsubscribe();
+        },
+      };
+    };
+    const session = new WorkbenchSession('t-1', { agentFactory: () => agent });
+    session.start();
+
+    session.dispose();
+
+    expect(agent.abortRun).toHaveBeenCalledTimes(1);
+    expect(callOrder).toEqual(['abort', 'unsubscribe']);
+    expect(subscribers).toHaveLength(0);
   });
 });
