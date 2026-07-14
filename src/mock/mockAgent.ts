@@ -1,4 +1,4 @@
-import { EventType, type AgentSubscriber, type BaseEvent } from '@ag-ui/client';
+import type { AgentSubscriber, BaseEvent } from '@ag-ui/client';
 import {
   reviewRun,
   previewRun,
@@ -7,6 +7,7 @@ import {
   THREAD_ID,
   type DemoRun,
 } from './demoScript';
+import { dispatchToSubscriber } from '../agui/dispatchToSubscriber';
 
 interface MockRunParams {
   forwardedProps?: { a2uiAction?: { name?: string } };
@@ -22,32 +23,6 @@ function runFor(actionName: string | undefined): DemoRun {
       return cancelRun;
     default:
       return reviewRun;
-  }
-}
-
-function dispatchToSubscriber(subscriber: AgentSubscriber, event: BaseEvent): void {
-  const params = { event, messages: [], state: {}, agent: {} as never, input: {} as never };
-  switch (event.type) {
-    case EventType.RUN_STARTED:
-      subscriber.onRunStartedEvent?.(params as never);
-      break;
-    case EventType.RUN_FINISHED:
-      subscriber.onRunFinishedEvent?.({ ...params, outcome: 'success' } as never);
-      break;
-    case EventType.RUN_ERROR:
-      subscriber.onRunErrorEvent?.(params as never);
-      break;
-    case EventType.STATE_SNAPSHOT:
-      subscriber.onStateSnapshotEvent?.(params as never);
-      break;
-    case EventType.STATE_DELTA:
-      subscriber.onStateDeltaEvent?.(params as never);
-      break;
-    case EventType.CUSTOM:
-      subscriber.onCustomEvent?.(params as never);
-      break;
-    default:
-      break;
   }
 }
 

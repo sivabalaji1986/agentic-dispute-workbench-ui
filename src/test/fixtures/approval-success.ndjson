@@ -1,0 +1,7 @@
+{"type":"RUN_STARTED","threadId":"demo-thread-d-10291","runId":"run-approval"}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Creating evidence request task..."}}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Updating case status to Pending Evidence..."}}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Creating audit entry..."}}
+{"type":"CUSTOM","name":"progress","value":{"source":"orchestrator","text":"Task created successfully."}}
+{"type":"CUSTOM","name":"a2ui","value":{"version":"v0.9","updateComponents":{"surfaceId":"case-D-10291","components":[{"id":"root","component":"TaskCreatedCard","taskId":"EVID-88421","caseStatus":"Pending Evidence","auditEntry":"Created","nextOwner":"Dispute Operations Queue"}]}}}
+{"type":"RUN_FINISHED","threadId":"demo-thread-d-10291","runId":"run-approval"}

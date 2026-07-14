@@ -1,0 +1,3 @@
+{"type":"RUN_STARTED","threadId":"demo-thread-d-10291","runId":"run-preview"}
+{"type":"CUSTOM","name":"a2ui","value":{"version":"v0.9","updateComponents":{"surfaceId":"case-D-10291","components":[{"id":"root","component":"ApprovalPreview","caseId":"D-10291","newCaseStatus":"Pending Evidence","missingItems":["Missing customer declaration","Missing delivery / non-delivery proof"],"actionAfterApproval":"Create task in case system and update case status.","onApprove":{"event":{"name":"approve_task_creation","context":{}}},"onEdit":{"event":{"name":"edit_task_creation","context":{}}},"onCancel":{"event":{"name":"cancel_task_creation","context":{}}}}]}}}
+{"type":"RUN_FINISHED","threadId":"demo-thread-d-10291","runId":"run-preview"}

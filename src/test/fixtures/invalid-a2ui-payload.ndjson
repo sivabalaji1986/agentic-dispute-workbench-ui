@@ -1,0 +1,3 @@
+{"type":"RUN_STARTED","threadId":"fixture-thread","runId":"run-fixture-invalid"}
+{"type":"CUSTOM","name":"a2ui","value":{"version":"v0.8","createSurface":{"surfaceId":"case-fixture","catalogId":"https://dispute-workbench.internal/catalogs/v1.json"}}}
+{"type":"RUN_FINISHED","threadId":"fixture-thread","runId":"run-fixture-invalid"}
