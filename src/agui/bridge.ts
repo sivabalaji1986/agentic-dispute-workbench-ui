@@ -1,9 +1,15 @@
 import { applyPatch, type Operation } from 'fast-json-patch';
 import type { AgentSubscriber } from '@ag-ui/client';
 import { isA2uiCustomEvent, isProgressCustomEvent } from './events';
+import {
+  validateProgressEventValue,
+  validateA2uiMessage,
+  validateStateSnapshot,
+  validateStateDelta,
+  logValidationFailure,
+} from './validation';
 import { useWorkbenchStore } from '../state/workbenchStore';
 import { preprocessUnknownComponents } from '../components/catalog/catalogInstance';
-import type { A2uiComponentJson } from '../components/catalog/types';
 
 let stateDoc: Record<string, unknown> = {};
 
@@ -16,37 +22,39 @@ function syncEvidenceReadiness(): void {
   useWorkbenchStore.getState().setEvidenceReadiness(typeof value === 'string' ? value : null);
 }
 
-function applyA2uiMessage(message: { version: 'v0.9'; [key: string]: unknown }): void {
+function applyA2uiMessage(rawValue: unknown): void {
+  const validated = validateA2uiMessage(rawValue);
+  if (!validated.success) {
+    logValidationFailure(validated.failure);
+    return;
+  }
+  const message = validated.data;
   const processor = useWorkbenchStore.getState().processor;
 
   if ('createSurface' in message) {
-    const surfaceId = (message.createSurface as { surfaceId: string }).surfaceId;
+    const surfaceId = message.createSurface.surfaceId;
     if (processor.model.getSurface(surfaceId)) {
       console.warn(`A2UI: ignoring duplicate createSurface for existing surface ${surfaceId}`);
       return;
     }
-    processor.processMessages([message as never]);
+    processor.processMessages([message]);
     return;
   }
 
   if ('updateComponents' in message) {
-    const payload = message.updateComponents as {
-      surfaceId: string;
-      components: A2uiComponentJson[];
-    };
     processor.processMessages([
       {
         version: 'v0.9',
         updateComponents: {
-          surfaceId: payload.surfaceId,
-          components: preprocessUnknownComponents(payload.components),
+          surfaceId: message.updateComponents.surfaceId,
+          components: preprocessUnknownComponents(message.updateComponents.components as never),
         },
-      } as never,
+      },
     ]);
     return;
   }
 
-  processor.processMessages([message as never]);
+  processor.processMessages([message]);
 }
 
 export const workbenchAgentSubscriber: AgentSubscriber = {
@@ -61,21 +69,36 @@ export const workbenchAgentSubscriber: AgentSubscriber = {
     useWorkbenchStore.getState().setConnectionStatus('disconnected');
   },
   onStateSnapshotEvent({ event }) {
-    stateDoc = (event.snapshot as Record<string, unknown>) ?? {};
+    const validated = validateStateSnapshot(event.snapshot);
+    if (!validated.success) {
+      logValidationFailure(validated.failure);
+      return;
+    }
+    stateDoc = validated.data;
     syncEvidenceReadiness();
   },
   onStateDeltaEvent({ event }) {
-    const result = applyPatch(stateDoc, event.delta as Operation[], true, false);
+    const validated = validateStateDelta(event.delta);
+    if (!validated.success) {
+      logValidationFailure(validated.failure);
+      return;
+    }
+    const result = applyPatch(stateDoc, validated.data as Operation[], true, false);
     stateDoc = result.newDocument;
     syncEvidenceReadiness();
   },
   onCustomEvent({ event }) {
     if (isProgressCustomEvent(event)) {
-      useWorkbenchStore.getState().appendProgressLine(event.value.source, event.value.text);
+      const validated = validateProgressEventValue(event.value);
+      if (!validated.success) {
+        logValidationFailure(validated.failure);
+        return;
+      }
+      useWorkbenchStore.getState().appendProgressLine(validated.data.source, validated.data.text);
       return;
     }
     if (isA2uiCustomEvent(event)) {
-      applyA2uiMessage(event.value as { version: 'v0.9'; [key: string]: unknown });
+      applyA2uiMessage(event.value);
     }
   },
 };

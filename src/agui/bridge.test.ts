@@ -141,4 +141,65 @@ describe('workbenchAgentSubscriber', () => {
     workbenchAgentSubscriber.onStateDeltaEvent?.(fakeParams(delta));
     expect(useWorkbenchStore.getState().evidenceReadiness).toBe('2 of 4 required items present');
   });
+
+  it('drops a malformed progress event instead of appending it, without throwing', () => {
+    const event: CustomEvent = {
+      type: EventType.CUSTOM,
+      name: 'progress',
+      value: { source: 'not-a-real-agent', text: 'hi' },
+    };
+    expect(() => workbenchAgentSubscriber.onCustomEvent?.(fakeParams(event))).not.toThrow();
+    expect(useWorkbenchStore.getState().progressLines).toHaveLength(0);
+  });
+
+  it('drops an a2ui message with the wrong version instead of touching the surface', () => {
+    const event: CustomEvent = {
+      type: EventType.CUSTOM,
+      name: 'a2ui',
+      value: { version: 'v0.8', createSurface: { surfaceId: 'case-X', catalogId: 'x' } },
+    };
+    expect(() => workbenchAgentSubscriber.onCustomEvent?.(fakeParams(event))).not.toThrow();
+    const processor = useWorkbenchStore.getState().processor;
+    expect(processor.model.getSurface('case-X')).toBeUndefined();
+  });
+
+  it('drops an oversized updateComponents payload instead of applying it', () => {
+    const surfaceId = 'case-D-10291';
+    const createEvent: CustomEvent = {
+      type: EventType.CUSTOM,
+      name: 'a2ui',
+      value: {
+        version: 'v0.9',
+        createSurface: {
+          surfaceId,
+          catalogId: 'https://dispute-workbench.internal/catalogs/v1.json',
+        },
+      },
+    };
+    const oversized = Array.from({ length: 21 }, (_, index) => ({
+      id: `c-${index}`,
+      component: 'UnknownForTest',
+    }));
+    const updateEvent: CustomEvent = {
+      type: EventType.CUSTOM,
+      name: 'a2ui',
+      value: { version: 'v0.9', updateComponents: { surfaceId, components: oversized } },
+    };
+    workbenchAgentSubscriber.onCustomEvent?.(fakeParams(createEvent));
+    expect(() => workbenchAgentSubscriber.onCustomEvent?.(fakeParams(updateEvent))).not.toThrow();
+  });
+
+  it('drops a STATE_DELTA with an invalid op instead of applying it', () => {
+    const snapshot: StateSnapshotEvent = {
+      type: EventType.STATE_SNAPSHOT,
+      snapshot: { evidenceReadiness: null },
+    };
+    const badDelta = {
+      type: EventType.STATE_DELTA,
+      delta: [{ op: 'teleport', path: '/evidenceReadiness', value: 'x' }],
+    } as unknown as StateDeltaEvent;
+    workbenchAgentSubscriber.onStateSnapshotEvent?.(fakeParams(snapshot));
+    expect(() => workbenchAgentSubscriber.onStateDeltaEvent?.(fakeParams(badDelta))).not.toThrow();
+    expect(useWorkbenchStore.getState().evidenceReadiness).toBeNull();
+  });
 });
