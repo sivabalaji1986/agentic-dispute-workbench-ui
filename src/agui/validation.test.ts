@@ -96,6 +96,17 @@ describe('validateA2uiMessage', () => {
     expect(result.success).toBe(false);
   });
 
+  it('reports a wrong version string at issuePath "version", not the union root', () => {
+    const result = validateA2uiMessage({
+      version: 'v0.8',
+      createSurface: { surfaceId: SURFACE_ID, catalogId: CATALOG_ID },
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.failure.issuePath).toBe('version');
+    }
+  });
+
   it('rejects a payload carrying two message kinds at once', () => {
     const result = validateA2uiMessage({
       version: 'v0.9',

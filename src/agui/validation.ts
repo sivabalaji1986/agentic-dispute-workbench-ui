@@ -80,6 +80,20 @@ export function validateProgressEventValue(
 }
 
 export function validateA2uiMessage(value: unknown): ValidationResult<A2uiMessage> {
+  // Checked ahead of the union parse: A2uiMessageSchema is a plain z.union,
+  // not a discriminated one, so a version mismatch fails at the union root
+  // (issuePath '(root)') rather than at the 'version' field — this would
+  // otherwise make bridge.ts's 'unsupported_a2ui_version' classification
+  // unreachable. Reported explicitly here so that classification stays live.
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'version' in value &&
+    (value as { version: unknown }).version !== 'v0.9'
+  ) {
+    return { success: false, failure: { eventType: 'a2ui', issuePath: 'version' } };
+  }
+
   const base = A2uiMessageSchema.safeParse(value);
   if (!base.success) {
     return { success: false, failure: { eventType: 'a2ui', issuePath: firstIssuePath(base.error) } };

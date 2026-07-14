@@ -81,6 +81,7 @@ describe('captured-stream contract fixtures', () => {
     expect(processor.model.surfacesMap.size).toBe(0);
     expect(useWorkbenchStore.getState().protocolError).not.toBeNull();
     expect(useWorkbenchStore.getState().protocolError?.retryable).toBe(false);
+    expect(useWorkbenchStore.getState().protocolError?.code).toBe('unsupported_a2ui_version');
   });
 
   it('disconnected-midrun.ndjson surfaces a retryable transport error', () => {
