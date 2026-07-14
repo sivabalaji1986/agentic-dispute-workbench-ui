@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EventType, type AgentSubscriber, type CustomEvent, type RunFinishedEvent } from '@ag-ui/client';
+import {
+  EventType,
+  type AgentSubscriber,
+  type CustomEvent,
+  type RunFinishedEvent,
+} from '@ag-ui/client';
 import { WorkbenchSession } from './workbenchSession';
 import { useWorkbenchStore } from '../state/workbenchStore';
 import type { AguiLikeAgent } from './types';
@@ -100,7 +105,7 @@ describe('WorkbenchSession', () => {
     expect(useWorkbenchStore.getState().transportError?.code).toBe('backend_unreachable');
   });
 
-  it('sets a retryable backend_unreachable transport error when reconnect()\'s runAgent rejects', async () => {
+  it("sets a retryable backend_unreachable transport error when reconnect()'s runAgent rejects", async () => {
     const agent: AguiLikeAgent = {
       threadId: 'fake',
       subscribe: () => ({ unsubscribe: () => {} }),

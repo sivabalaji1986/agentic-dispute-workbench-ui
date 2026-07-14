@@ -235,11 +235,11 @@ never thrown into React) and logged as a redacted summary (event type + the
 first Zod issue path only — never the raw payload). The backend must respect
 these fixed caps:
 
-| Cap                        | Value | Applies to                                   |
-| --------------------------- | ----- | --------------------------------------------- |
-| `MAX_COMPONENTS_PER_UPDATE` | 20    | `updateComponents.components.length`          |
-| `MAX_CHECKLIST_ITEMS`       | 20    | `EvidenceChecklist.items.length`              |
-| `MAX_ACTIONS`               | 10    | `NextActions.actions.length`                  |
+| Cap                         | Value | Applies to                                      |
+| --------------------------- | ----- | ----------------------------------------------- |
+| `MAX_COMPONENTS_PER_UPDATE` | 20    | `updateComponents.components.length`            |
+| `MAX_CHECKLIST_ITEMS`       | 20    | `EvidenceChecklist.items.length`                |
+| `MAX_ACTIONS`               | 10    | `NextActions.actions.length`                    |
 | `MAX_PROGRESS_TEXT`         | 500   | `progress.text.length` (also must be non-empty) |
 
 `surfaceId` must match `^[a-zA-Z0-9_-]{1,64}$` on every message that carries
@@ -247,7 +247,7 @@ one. `progress.source` must be one of `orchestrator`/`case-review`/`policy` —
 an unrecognized source is rejected, not passed through. Component props for
 the five catalog types are validated against the same schemas the catalog
 itself renders against (`src/components/catalog/schemas.ts`); a component
-type outside the closed catalog is *not* rejected here — it is intentionally
+type outside the closed catalog is _not_ rejected here — it is intentionally
 left to the existing `UnknownComponentFallback` safety net (§4.2).
 
 ### 3.7 Error handling and status model
@@ -271,12 +271,12 @@ failed` — this replaces the previous `disconnected`/`finished` pair. On
 `RUN_FINISHED`, the client derives the new status from the surface's current
 root component and which action (if any) it just dispatched:
 
-| Root component after finish | Last dispatched action id    | New status         |
-| ----------------------------- | ------------------------------ | -------------------- |
-| `ApprovalPreview`              | (any)                           | `awaiting-approval`  |
-| `TaskCreatedCard`              | (any)                           | `completed`          |
-| `DecisionCard`                 | `cancel_task_creation`          | `cancelled`          |
-| `DecisionCard`                 | none (the initial review run)   | `idle`               |
+| Root component after finish | Last dispatched action id     | New status          |
+| --------------------------- | ----------------------------- | ------------------- |
+| `ApprovalPreview`           | (any)                         | `awaiting-approval` |
+| `TaskCreatedCard`           | (any)                         | `completed`         |
+| `DecisionCard`              | `cancel_task_creation`        | `cancelled`         |
+| `DecisionCard`              | none (the initial review run) | `idle`              |
 
 This is entirely inferred client-side — the backend does not send a status
 field.

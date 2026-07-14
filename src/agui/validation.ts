@@ -62,8 +62,7 @@ export interface ValidationFailure {
 }
 
 export type ValidationResult<T> =
-  | { success: true; data: T }
-  | { success: false; failure: ValidationFailure };
+  { success: true; data: T } | { success: false; failure: ValidationFailure };
 
 function firstIssuePath(error: z.ZodError): string {
   const issue = error.issues[0];
@@ -76,7 +75,10 @@ export function validateProgressEventValue(
 ): ValidationResult<z.infer<typeof ProgressEventValueSchema>> {
   const result = ProgressEventValueSchema.safeParse(value);
   if (result.success) return { success: true, data: result.data };
-  return { success: false, failure: { eventType: 'progress', issuePath: firstIssuePath(result.error) } };
+  return {
+    success: false,
+    failure: { eventType: 'progress', issuePath: firstIssuePath(result.error) },
+  };
 }
 
 export function validateA2uiMessage(value: unknown): ValidationResult<A2uiMessage> {
@@ -96,7 +98,10 @@ export function validateA2uiMessage(value: unknown): ValidationResult<A2uiMessag
 
   const base = A2uiMessageSchema.safeParse(value);
   if (!base.success) {
-    return { success: false, failure: { eventType: 'a2ui', issuePath: firstIssuePath(base.error) } };
+    return {
+      success: false,
+      failure: { eventType: 'a2ui', issuePath: firstIssuePath(base.error) },
+    };
   }
   const message = base.data;
 

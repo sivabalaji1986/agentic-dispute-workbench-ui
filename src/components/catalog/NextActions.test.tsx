@@ -68,7 +68,13 @@ describe('NextActions', () => {
 
     renderA2uiComponents(
       [NextActions],
-      [{ id: 'root', component: 'NextActions', actions: [{ id: 'delete_everything', label: 'Delete Everything' }] }],
+      [
+        {
+          id: 'root',
+          component: 'NextActions',
+          actions: [{ id: 'delete_everything', label: 'Delete Everything' }],
+        },
+      ],
       { onAction },
     );
 

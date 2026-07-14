@@ -5,13 +5,7 @@ import type { AgentSource } from '../agui/events';
 import { disputeCatalog } from '../components/catalog/catalogInstance';
 
 export type ConnectionStatus =
-  | 'idle'
-  | 'connecting'
-  | 'streaming'
-  | 'awaiting-approval'
-  | 'completed'
-  | 'cancelled'
-  | 'failed';
+  'idle' | 'connecting' | 'streaming' | 'awaiting-approval' | 'completed' | 'cancelled' | 'failed';
 
 export interface WorkbenchError {
   code: string;

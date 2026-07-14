@@ -30,10 +30,12 @@
 ### Task 1: Validation schemas + caps module
 
 **Files:**
+
 - Create: `src/agui/validation.ts`
 - Create: `src/agui/validation.test.ts`
 
 **Interfaces:**
+
 - Produces: `MAX_COMPONENTS_PER_UPDATE`, `MAX_CHECKLIST_ITEMS`, `MAX_ACTIONS`, `MAX_PROGRESS_TEXT` (number constants); `AgentSourceSchema` (Zod enum); `ProgressEventValueSchema`, `StateSnapshotSchema`, `StateDeltaSchema` (Zod schemas); `type ValidationFailure = { eventType: string; issuePath: string }`; `type ValidationResult<T> = { success: true; data: T } | { success: false; failure: ValidationFailure }`; functions `validateProgressEventValue(value: unknown): ValidationResult<...>`, `validateA2uiMessage(value: unknown): ValidationResult<A2uiMessage>`, `validateStateSnapshot(value: unknown)`, `validateStateDelta(value: unknown)`, `validateForwardedAction(value: unknown): ValidationResult<A2uiClientAction>`, and `logValidationFailure(failure: ValidationFailure): void`.
 - Consumes: `A2uiMessageSchema`, `A2uiClientActionSchema` from `@a2ui/web_core/v0_9`; `DecisionCardApi`, `EvidenceChecklistApi`, `EvidenceItemSchema`, `NextActionsApi`, `NextActionItemSchema`, `ApprovalPreviewApi`, `TaskCreatedCardApi` from `../components/catalog/schemas`.
 
@@ -338,8 +340,7 @@ export interface ValidationFailure {
 }
 
 export type ValidationResult<T> =
-  | { success: true; data: T }
-  | { success: false; failure: ValidationFailure };
+  { success: true; data: T } | { success: false; failure: ValidationFailure };
 
 function firstIssuePath(error: z.ZodError): string {
   const issue = error.issues[0];
@@ -352,13 +353,19 @@ export function validateProgressEventValue(
 ): ValidationResult<z.infer<typeof ProgressEventValueSchema>> {
   const result = ProgressEventValueSchema.safeParse(value);
   if (result.success) return { success: true, data: result.data };
-  return { success: false, failure: { eventType: 'progress', issuePath: firstIssuePath(result.error) } };
+  return {
+    success: false,
+    failure: { eventType: 'progress', issuePath: firstIssuePath(result.error) },
+  };
 }
 
 export function validateA2uiMessage(value: unknown): ValidationResult<A2uiMessage> {
   const base = A2uiMessageSchema.safeParse(value);
   if (!base.success) {
-    return { success: false, failure: { eventType: 'a2ui', issuePath: firstIssuePath(base.error) } };
+    return {
+      success: false,
+      failure: { eventType: 'a2ui', issuePath: firstIssuePath(base.error) },
+    };
   }
   const message = base.data;
 
@@ -466,10 +473,12 @@ git commit -m "feat: add Zod validation schemas for inbound/outbound protocol pa
 ### Task 2: Wire inbound validation into the bridge + redacted logging
 
 **Files:**
+
 - Modify: `src/agui/bridge.ts`
 - Modify: `src/agui/bridge.test.ts`
 
 **Interfaces:**
+
 - Consumes: `validateProgressEventValue`, `validateA2uiMessage`, `validateStateSnapshot`, `validateStateDelta`, `logValidationFailure` from `./validation` (Task 1).
 - Produces: `bridge.ts`'s `applyA2uiMessage` and the `onCustomEvent`/`onStateSnapshotEvent`/`onStateDeltaEvent` handlers now validate before acting. No public export signature changes in this task (the `createWorkbenchAgentSubscriber` factory refactor is Task 5) — keep the existing `workbenchAgentSubscriber` singleton and `resetBridgeState()` export for now so this task stays isolated to validation wiring.
 
@@ -706,11 +715,11 @@ never thrown into React) and logged as a redacted summary (event type + the
 first Zod issue path only — never the raw payload). The backend must respect
 these fixed caps:
 
-| Cap                        | Value | Applies to                                   |
-| --------------------------- | ----- | --------------------------------------------- |
-| `MAX_COMPONENTS_PER_UPDATE` | 20    | `updateComponents.components.length`          |
-| `MAX_CHECKLIST_ITEMS`       | 20    | `EvidenceChecklist.items.length`              |
-| `MAX_ACTIONS`               | 10    | `NextActions.actions.length`                  |
+| Cap                         | Value | Applies to                                      |
+| --------------------------- | ----- | ----------------------------------------------- |
+| `MAX_COMPONENTS_PER_UPDATE` | 20    | `updateComponents.components.length`            |
+| `MAX_CHECKLIST_ITEMS`       | 20    | `EvidenceChecklist.items.length`                |
+| `MAX_ACTIONS`               | 10    | `NextActions.actions.length`                    |
 | `MAX_PROGRESS_TEXT`         | 500   | `progress.text.length` (also must be non-empty) |
 
 `surfaceId` must match `^[a-zA-Z0-9_-]{1,64}$` on every message that carries
@@ -718,7 +727,7 @@ one. `progress.source` must be one of `orchestrator`/`case-review`/`policy` —
 an unrecognized source is rejected, not passed through. Component props for
 the five catalog types are validated against the same schemas the catalog
 itself renders against (`src/components/catalog/schemas.ts`); a component
-type outside the closed catalog is *not* rejected here — it is intentionally
+type outside the closed catalog is _not_ rejected here — it is intentionally
 left to the existing `UnknownComponentFallback` safety net (§4.2).
 ```
 
@@ -732,10 +741,12 @@ git commit -m "docs: amend design doc with inbound payload validation contract"
 ### Task 3: Outbound `ForwardedActionSchema` validation before dispatch
 
 **Files:**
+
 - Modify: `src/agui/client.ts`
 - Modify: (new) `src/agui/client.test.ts` if one does not already exist — check first; if the file doesn't exist, create it.
 
 **Interfaces:**
+
 - Consumes: `validateForwardedAction`, `logValidationFailure` from `./validation`.
 
 Currently `client.ts` subscribes to `processor.model.onAction` and forwards every action verbatim: `useWorkbenchStore.getState().processor.model.onAction.subscribe((action) => { void agent?.runAgent({ forwardedProps: { a2uiAction: action } }); });`. This task validates `action` before forwarding it. In practice this action always comes from the A2UI library's own internal dispatch machinery (already shaped as `A2uiClientAction`), so this is defense-in-depth, not a behavior change for any currently-passing path — but it closes the gap where a future catalog change could otherwise forward a malformed action to the backend unnoticed.
@@ -840,7 +851,7 @@ export function reconnect(): void {
 }
 ```
 
-(This is intentionally the *minimal* diff for this task — Task 5 replaces this whole module's shape with `WorkbenchSession`. Keep the diff here scoped to validation only so Task 5's diff stays reviewable.)
+(This is intentionally the _minimal_ diff for this task — Task 5 replaces this whole module's shape with `WorkbenchSession`. Keep the diff here scoped to validation only so Task 5's diff stays reviewable.)
 
 - [ ] **Step 4: Run the full suite and existing integration test**
 
@@ -860,6 +871,7 @@ git commit -m "feat: validate outbound A2UI client actions before forwarding to 
 ### Task 4: Action-ID allow-list
 
 **Files:**
+
 - Create: `src/agui/actionIds.ts`
 - Create: `src/agui/actionIds.test.ts`
 - Modify: `src/components/catalog/NextActions.tsx`
@@ -868,6 +880,7 @@ git commit -m "feat: validate outbound A2UI client actions before forwarding to 
 - Modify: `docs/superpowers/specs/2026-07-13-agentic-dispute-workbench-ui-design.md`
 
 **Interfaces:**
+
 - Produces: `DISPATCHABLE_ACTION_IDS` (readonly tuple), `type DispatchableActionId`, `isDispatchableActionId(id: string): id is DispatchableActionId`.
 - Consumes (in `NextActions.tsx`): `isDispatchableActionId` from `../../agui/actionIds`.
 
@@ -1084,6 +1097,7 @@ git commit -m "docs: document the frozen action-id allow-list in the spec and RE
 ### Task 5: `WorkbenchSession` controller (remove module-level mutable state)
 
 **Files:**
+
 - Create: `src/agui/types.ts`
 - Create: `src/agui/workbenchSession.ts`
 - Create: `src/agui/workbenchSession.test.ts`
@@ -1094,6 +1108,7 @@ git commit -m "docs: document the frozen action-id allow-list in the spec and RE
 - Modify: `src/state/workbenchStore.test.ts`
 
 **Interfaces:**
+
 - Produces (`src/agui/types.ts`): `export type AguiLikeAgent = { threadId: string; subscribe(...): {unsubscribe: () => void}; runAgent(params?: {forwardedProps?: unknown}): Promise<unknown>; abortRun(): void }` (moved verbatim out of `client.ts`, no shape change).
 - Produces (`src/agui/bridge.ts`): `export function createWorkbenchAgentSubscriber(processor: MessageProcessor<ReactComponentImplementation>, onProtocolError: (failure: ValidationFailure) => void): AgentSubscriber` — replaces the module-level `workbenchAgentSubscriber` singleton and `resetBridgeState()`. `stateDoc` becomes a closure variable local to each call, not module state.
 - Produces (`src/agui/workbenchSession.ts`): `export class WorkbenchSession { readonly threadId: string; constructor(threadId: string, opts?: { agentFactory?: () => AguiLikeAgent }); start(): void; dispatchAction(a2uiAction: unknown): void; reconnect(): void; abort(): void; dispose(): void }`.
@@ -1102,7 +1117,7 @@ git commit -m "docs: document the frozen action-id allow-list in the spec and RE
 
 This is the largest single task in the plan. Read `src/agui/client.ts`, `src/agui/bridge.ts`, and `src/state/workbenchStore.ts` in full before starting — this task rewrites all three.
 
-**Design:** `WorkbenchSession` owns everything that used to be module-level `let` state: the `agent` handle, the `threadId`, its own `MessageProcessor` instance (a *fresh* processor per session — this is what makes "two sequential sessions don't leak" true even though today only one case can ever be started), the RFC-6902 `stateDoc`, and both subscription handles (`agent.subscribe(...)` and `processor.model.onAction.subscribe(...)`). `dispose()` unsubscribes both. The Zustand store keeps holding UI-facing state (`progressLines`, `evidenceReadiness`, `connectionStatus`, `caseId`, etc. — these remain legitimate global projections of "whatever the current session is doing"), plus a `processor` field that mirrors the session's own processor so `DecisionPanel.tsx` keeps working unchanged (it already reacts to `processor` changing — see its `useEffect` dependency array).
+**Design:** `WorkbenchSession` owns everything that used to be module-level `let` state: the `agent` handle, the `threadId`, its own `MessageProcessor` instance (a _fresh_ processor per session — this is what makes "two sequential sessions don't leak" true even though today only one case can ever be started), the RFC-6902 `stateDoc`, and both subscription handles (`agent.subscribe(...)` and `processor.model.onAction.subscribe(...)`). `dispose()` unsubscribes both. The Zustand store keeps holding UI-facing state (`progressLines`, `evidenceReadiness`, `connectionStatus`, `caseId`, etc. — these remain legitimate global projections of "whatever the current session is doing"), plus a `processor` field that mirrors the session's own processor so `DecisionPanel.tsx` keeps working unchanged (it already reacts to `processor` changing — see its `useEffect` dependency array).
 
 - [ ] **Step 1: Extract `AguiLikeAgent` into its own module**
 
@@ -1567,11 +1582,13 @@ git commit -m "refactor: replace module-level agent/threadId/stateDoc with a Wor
 ### Task 6: `HttpAgentAdapter` (remove the `as unknown as` cast)
 
 **Files:**
+
 - Create: `src/agui/httpAgentAdapter.ts`
 - Create: `src/agui/httpAgentAdapter.test.ts`
 - Modify: `src/agui/workbenchSession.ts`
 
 **Interfaces:**
+
 - Produces: `export class HttpAgentAdapter implements AguiLikeAgent` — constructor `(params: { url: string; threadId: string })`.
 - Consumes: `HttpAgent` from `@ag-ui/client`; `AguiLikeAgent` from `./types`.
 
@@ -1713,6 +1730,7 @@ git commit -m "refactor: introduce HttpAgentAdapter, removing the last 'as unkno
 ### Task 7: Visible, structured error states + status model
 
 **Files:**
+
 - Modify: `src/state/workbenchStore.ts`
 - Modify: `src/state/workbenchStore.test.ts`
 - Modify: `src/agui/bridge.ts`
@@ -1724,31 +1742,26 @@ git commit -m "refactor: introduce HttpAgentAdapter, removing the last 'as unkno
 - Modify: `docs/superpowers/specs/2026-07-13-agentic-dispute-workbench-ui-design.md`
 
 **Interfaces:**
+
 - Produces (`workbenchStore.ts`): `export interface WorkbenchError { code: string; title: string; message: string; retryable: boolean; runId?: string }`; store fields `transportError: WorkbenchError | null`, `protocolError: WorkbenchError | null`; actions `setTransportError(error: WorkbenchError | null): void`, `setProtocolError(error: WorkbenchError | null): void`; `ConnectionStatus` becomes `'idle' | 'connecting' | 'streaming' | 'awaiting-approval' | 'completed' | 'cancelled' | 'failed'` (removes `'disconnected'` and `'finished'`).
 
 This task changes `ConnectionStatus`'s value set — every call site that reads or writes `'disconnected'`/`'finished'` must move to the new values. Grep first: `grep -rn "'disconnected'\|'finished'\|\"disconnected\"\|\"finished\"" src/` and update every hit as part of this task.
 
 **Status derivation table** (add to the spec doc in this task — see Step 6): on `RUN_FINISHED`, the new status is derived from (a) the surface's current root component and (b) which action, if any, was dispatched to start the run that just finished:
 
-| Root component after finish | Last dispatched action id       | New status          |
-| ---------------------------- | -------------------------------- | -------------------- |
-| `ApprovalPreview`             | (any)                             | `awaiting-approval`  |
-| `TaskCreatedCard`             | (any)                             | `completed`          |
-| `DecisionCard`                | `cancel_task_creation`            | `cancelled`          |
-| `DecisionCard`                | none (the initial review run)     | `idle`               |
+| Root component after finish | Last dispatched action id     | New status          |
+| --------------------------- | ----------------------------- | ------------------- |
+| `ApprovalPreview`           | (any)                         | `awaiting-approval` |
+| `TaskCreatedCard`           | (any)                         | `completed`         |
+| `DecisionCard`              | `cancel_task_creation`        | `cancelled`         |
+| `DecisionCard`              | none (the initial review run) | `idle`              |
 
 - [ ] **Step 1: Extend the store — types and state**
 
 ```ts
 // src/state/workbenchStore.ts — add near the top, after ConnectionStatus
 export type ConnectionStatus =
-  | 'idle'
-  | 'connecting'
-  | 'streaming'
-  | 'awaiting-approval'
-  | 'completed'
-  | 'cancelled'
-  | 'failed';
+  'idle' | 'connecting' | 'streaming' | 'awaiting-approval' | 'completed' | 'cancelled' | 'failed';
 
 export interface WorkbenchError {
   code: string;
@@ -1855,7 +1868,7 @@ export function createWorkbenchAgentSubscriber(
           : rootType === 'TaskCreatedCard'
             ? 'completed'
             : 'idle'; // WorkbenchSession overrides this to 'cancelled' when the
-                      // just-finished run was a cancel — see workbenchSession.ts.
+      // just-finished run was a cancel — see workbenchSession.ts.
       useWorkbenchStore.getState().setConnectionStatus(status);
     },
     onRunErrorEvent({ event }) {
@@ -1912,9 +1925,10 @@ export class WorkbenchSession {
     const subscriber = createWorkbenchAgentSubscriber(this.processor, (failure) => {
       logValidationFailure(failure);
       useWorkbenchStore.getState().setProtocolError({
-        code: failure.eventType === 'a2ui' && failure.issuePath === 'version'
-          ? 'unsupported_a2ui_version'
-          : 'protocol_error',
+        code:
+          failure.eventType === 'a2ui' && failure.issuePath === 'version'
+            ? 'unsupported_a2ui_version'
+            : 'protocol_error',
         title: 'Protocol error',
         message: 'The server sent a payload this client could not understand.',
         retryable: false,
@@ -1960,14 +1974,14 @@ export class WorkbenchSession {
 Then, back in `bridge.ts`'s `onRunFinishedEvent`, the `'idle'` fallback needs to become `'cancelled'` specifically when the just-finished run followed a `cancel_task_creation` dispatch. Since `bridge.ts`'s subscriber factory doesn't know about dispatched actions (that's session-level knowledge), thread it through: change `createWorkbenchAgentSubscriber`'s signature to also accept a `getLastDispatchedActionId: () => string | undefined` callback, called only in the `DecisionCard`-root branch of `onRunFinishedEvent`:
 
 ```ts
-      const status =
-        rootType === 'ApprovalPreview'
-          ? 'awaiting-approval'
-          : rootType === 'TaskCreatedCard'
-            ? 'completed'
-            : getLastDispatchedActionId() === 'cancel_task_creation'
-              ? 'cancelled'
-              : 'idle';
+const status =
+  rootType === 'ApprovalPreview'
+    ? 'awaiting-approval'
+    : rootType === 'TaskCreatedCard'
+      ? 'completed'
+      : getLastDispatchedActionId() === 'cancel_task_creation'
+        ? 'cancelled'
+        : 'idle';
 ```
 
 And in `WorkbenchSession.start()`/`reconnect()`, pass `() => this.lastDispatchedActionId` as that third argument when constructing the subscriber.
@@ -1998,10 +2012,17 @@ it('derives idle status when no action was dispatched and root is DecisionCard',
 });
 
 it('sets a retryable transport WorkbenchError and failed status on RUN_ERROR', () => {
-  const event: RunErrorEvent = { type: EventType.RUN_ERROR, message: 'boom', code: 'x' } as RunErrorEvent;
+  const event: RunErrorEvent = {
+    type: EventType.RUN_ERROR,
+    message: 'boom',
+    code: 'x',
+  } as RunErrorEvent;
   workbenchAgentSubscriber.onRunErrorEvent?.(fakeParams(event));
   expect(useWorkbenchStore.getState().connectionStatus).toBe('failed');
-  expect(useWorkbenchStore.getState().transportError).toMatchObject({ message: 'boom', retryable: true });
+  expect(useWorkbenchStore.getState().transportError).toMatchObject({
+    message: 'boom',
+    retryable: true,
+  });
 });
 
 it('sets a retryable transport WorkbenchError on onRunFailed', () => {
@@ -2064,7 +2085,9 @@ function ConnectionStrip({
   status: string;
   error: { message: string; retryable: boolean } | null;
 }) {
-  if (status === 'connecting') { /* unchanged */ }
+  if (status === 'connecting') {
+    /* unchanged */
+  }
   if (status === 'failed') {
     return (
       <div className="mt-1.5 -mx-4 flex items-center justify-between bg-pending-surface px-4 py-1.5 text-xs">
@@ -2081,8 +2104,10 @@ function ConnectionStrip({
       </div>
     );
   }
-  if (status === 'completed') return <p className="mt-1.5 font-mono text-[11px] text-ink/40">Run complete</p>;
-  if (status === 'awaiting-approval') return <p className="mt-1.5 text-xs text-ink/50">Awaiting approval</p>;
+  if (status === 'completed')
+    return <p className="mt-1.5 font-mono text-[11px] text-ink/40">Run complete</p>;
+  if (status === 'awaiting-approval')
+    return <p className="mt-1.5 text-xs text-ink/50">Awaiting approval</p>;
   if (status === 'streaming') return <p className="mt-1.5 text-xs text-ink/50">Streaming</p>;
   return null;
 }
@@ -2097,14 +2122,16 @@ Update the `ConnectionStrip` call site to pass `error={transportError}`.
 const protocolError = useWorkbenchStore((state) => state.protocolError);
 
 // ...inside the returned JSX, after the <h2> heading, before the surface/empty-state branch:
-{protocolError && (
-  <div className="rounded-[var(--radius-card)] border border-ledger-line border-l-4 border-l-pending bg-pending-surface p-3 text-sm text-pending">
-    <p className="font-mono text-xs font-semibold uppercase tracking-[0.1em]">
-      {protocolError.title}
-    </p>
-    <p className="mt-1">{protocolError.message}</p>
-  </div>
-)}
+{
+  protocolError && (
+    <div className="rounded-[var(--radius-card)] border border-ledger-line border-l-4 border-l-pending bg-pending-surface p-3 text-sm text-pending">
+      <p className="font-mono text-xs font-semibold uppercase tracking-[0.1em]">
+        {protocolError.title}
+      </p>
+      <p className="mt-1">{protocolError.message}</p>
+    </div>
+  );
+}
 ```
 
 Update `CaseIntakePanel.tsx`'s `busy` check — it currently reads `connectionStatus === 'connecting' || connectionStatus === 'streaming'`; leave as-is (still correct under the new status set — busy should be false for `awaiting-approval`/`completed`/`cancelled`/`failed`/`idle`, matching current behavior for the equivalent old states).
@@ -2158,12 +2185,12 @@ failed` — this replaces the previous `disconnected`/`finished` pair. On
 `RUN_FINISHED`, the client derives the new status from the surface's current
 root component and which action (if any) it just dispatched:
 
-| Root component after finish | Last dispatched action id    | New status         |
-| ----------------------------- | ------------------------------ | -------------------- |
-| `ApprovalPreview`              | (any)                           | `awaiting-approval`  |
-| `TaskCreatedCard`              | (any)                           | `completed`          |
-| `DecisionCard`                 | `cancel_task_creation`          | `cancelled`          |
-| `DecisionCard`                 | none (the initial review run)   | `idle`               |
+| Root component after finish | Last dispatched action id     | New status          |
+| --------------------------- | ----------------------------- | ------------------- |
+| `ApprovalPreview`           | (any)                         | `awaiting-approval` |
+| `TaskCreatedCard`           | (any)                         | `completed`         |
+| `DecisionCard`              | `cancel_task_creation`        | `cancelled`         |
+| `DecisionCard`              | none (the initial review run) | `idle`              |
 
 This is entirely inferred client-side — the backend does not send a status
 field.
@@ -2179,6 +2206,7 @@ git commit -m "docs: amend design doc with error handling and status model contr
 ### Task 8: Captured-stream contract fixtures
 
 **Files:**
+
 - Create: `src/agui/dispatchToSubscriber.ts`
 - Modify: `src/mock/mockAgent.ts`
 - Create: `src/test/fixtures/replayFixture.ts`
@@ -2197,6 +2225,7 @@ git commit -m "docs: amend design doc with error handling and status model contr
 - Modify: `README.md`
 
 **Interfaces:**
+
 - Produces (`dispatchToSubscriber.ts`): `export function dispatchToSubscriber(subscriber: AgentSubscriber, event: BaseEvent): void` — extracted verbatim from `mockAgent.ts`'s existing private function of the same name, so it has exactly one implementation shared by `MockAgent` and `replayFixture`.
 - Produces (`replayFixture.ts`): `export function replayFixture(path: string, subscriber: AgentSubscriber): void`.
 
@@ -2301,6 +2330,7 @@ export function replayFixture(path: string, subscriber: AgentSubscriber): void {
 - [ ] **Step 3: Hand-author the two non-derivable fixtures and the deferred placeholder**
 
 ```
+
 ```
 
 `src/test/fixtures/invalid-a2ui-payload.ndjson`:
@@ -2323,6 +2353,7 @@ export function replayFixture(path: string, subscriber: AgentSubscriber): void {
 `src/test/fixtures/partial-agent-failure.ndjson` (empty on purpose — reserved slot):
 
 ```
+
 ```
 
 (An empty file. Its purpose is documented in `src/test/fixtures/README.md`, not in its own contents, since NDJSON has no comment syntax.)
@@ -2331,6 +2362,7 @@ export function replayFixture(path: string, subscriber: AgentSubscriber): void {
 
 ```markdown
 // src/test/fixtures/README.md
+
 # Captured-stream contract fixtures
 
 Each `.ndjson` file is one AG-UI event per line, exactly as it would appear
@@ -2383,7 +2415,13 @@ export default defineConfig({
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
-import { reviewRun, previewRun, approvalRun, cancelRun, type DemoRun } from '../src/mock/demoScript';
+import {
+  reviewRun,
+  previewRun,
+  approvalRun,
+  cancelRun,
+  type DemoRun,
+} from '../src/mock/demoScript';
 
 const FIXTURES_DIR = fileURLToPath(new URL('../src/test/fixtures/', import.meta.url));
 
@@ -2473,7 +2511,11 @@ describe('captured-stream contract fixtures', () => {
 
   it('disconnected-midrun.ndjson surfaces a retryable transport error', () => {
     const processor = new MessageProcessor([disputeCatalog]);
-    useWorkbenchStore.setState({ transportError: null, protocolError: null, connectionStatus: 'idle' });
+    useWorkbenchStore.setState({
+      transportError: null,
+      protocolError: null,
+      connectionStatus: 'idle',
+    });
     const subscriber = createWorkbenchAgentSubscriber(processor);
     replayFixture(fixturePath('disconnected-midrun.ndjson'), subscriber);
     expect(useWorkbenchStore.getState().connectionStatus).toBe('failed');
@@ -2511,6 +2553,7 @@ git commit -m "docs: document captured-stream fixtures in the README"
 ### Task 9: Accessibility + mode badge
 
 **Files:**
+
 - Modify: `src/components/LiveProgressPanel.tsx`
 - Create: `src/components/ModeBadge.tsx`
 - Create: `src/components/ModeBadge.test.tsx`
@@ -2518,6 +2561,7 @@ git commit -m "docs: document captured-stream fixtures in the README"
 - Modify: `src/test/integration.test.tsx`
 
 **Interfaces:**
+
 - Produces: `export function ModeBadge()` — reads `import.meta.env.VITE_MOCK` directly (same source `client.ts`/`workbenchSession.ts` already use) and the store's `connectionStatus` to decide visibility.
 
 - [ ] **Step 1: Write the failing tests**
@@ -2608,65 +2652,66 @@ const AGENT_FULL_NAME: Record<AgentSource, string> = {
 };
 
 // ...inside the map:
-              {progressLines.map((line) => (
-                <div
-                  key={line.id}
-                  data-testid="progress-line"
-                  className="relative animate-ledger-in pl-6"
-                >
-                  <span
-                    aria-hidden
-                    className={`absolute left-[4px] top-1.5 h-2 w-2 ${MARKER_COLOR[line.source]}`}
-                  />
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span
-                      aria-hidden
-                      className={`font-mono text-[10px] font-semibold uppercase tracking-wider ${TAG_COLOR[line.source]}`}
-                    >
-                      {TAG_LABEL[line.source]}
-                    </span>
-                    <span aria-hidden className="shrink-0 font-mono text-[10px] tabular-nums text-ink/35">
-                      {new Date(line.timestamp).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-sm leading-snug text-ink">
-                    <span className="sr-only">{AGENT_FULL_NAME[line.source]}: </span>
-                    {line.text}
-                  </p>
-                </div>
-              ))}
+{
+  progressLines.map((line) => (
+    <div key={line.id} data-testid="progress-line" className="relative animate-ledger-in pl-6">
+      <span
+        aria-hidden
+        className={`absolute left-[4px] top-1.5 h-2 w-2 ${MARKER_COLOR[line.source]}`}
+      />
+      <div className="flex items-baseline justify-between gap-3">
+        <span
+          aria-hidden
+          className={`font-mono text-[10px] font-semibold uppercase tracking-wider ${TAG_COLOR[line.source]}`}
+        >
+          {TAG_LABEL[line.source]}
+        </span>
+        <span aria-hidden className="shrink-0 font-mono text-[10px] tabular-nums text-ink/35">
+          {new Date(line.timestamp).toLocaleTimeString()}
+        </span>
+      </div>
+      <p className="mt-0.5 text-sm leading-snug text-ink">
+        <span className="sr-only">{AGENT_FULL_NAME[line.source]}: </span>
+        {line.text}
+      </p>
+    </div>
+  ));
+}
 ```
 
 The readiness chip in the header already exists (`evidenceReadiness && <span>...</span>`) — give it `aria-live="polite"` so a change is announced without re-announcing on every unrelated re-render (it already only changes when `evidenceReadiness` itself changes, so no extra guarding is needed beyond the attribute):
 
 ```tsx
-            <span aria-live="polite" className="rounded bg-ledger-line px-1.5 py-0.5 font-mono text-[11px] text-ink/70">
-              {evidenceReadiness}
-            </span>
+<span
+  aria-live="polite"
+  className="rounded bg-ledger-line px-1.5 py-0.5 font-mono text-[11px] text-ink/70"
+>
+  {evidenceReadiness}
+</span>
 ```
 
-Verify the disabled unknown-action button from Task 4 remains keyboard-focusable and its tooltip is reachable — a native `disabled` HTML button is *not* keyboard-focusable and strips `title` from the accessibility tree in most screen readers. Since the task brief for Task 4 requires the button to "remain focusable with the tooltip readable via `aria-describedby`," revisit `NextActions.tsx` in this task and change the unknown-action branch from a truly `disabled` button to an `aria-disabled="true"` button (not disabled, so it stays in the tab order) that no-ops on click and exposes the tooltip via `aria-describedby` pointing at a visually-present-but-quiet `<span>`:
+Verify the disabled unknown-action button from Task 4 remains keyboard-focusable and its tooltip is reachable — a native `disabled` HTML button is _not_ keyboard-focusable and strips `title` from the accessibility tree in most screen readers. Since the task brief for Task 4 requires the button to "remain focusable with the tooltip readable via `aria-describedby`," revisit `NextActions.tsx` in this task and change the unknown-action branch from a truly `disabled` button to an `aria-disabled="true"` button (not disabled, so it stays in the tab order) that no-ops on click and exposes the tooltip via `aria-describedby` pointing at a visually-present-but-quiet `<span>`:
 
 ```tsx
-          if (!dispatchable) {
-            const describedById = `unknown-action-${action.id}`;
-            return (
-              <span key={action.id} className="inline-flex flex-col items-start">
-                <button
-                  type="button"
-                  aria-disabled="true"
-                  aria-describedby={describedById}
-                  onClick={(event) => event.preventDefault()}
-                  className="cursor-not-allowed text-sm text-ink/30 underline decoration-ink/15 underline-offset-2"
-                >
-                  {action.label}
-                </button>
-                <span id={describedById} className="sr-only">
-                  Unknown action — not dispatchable
-                </span>
-              </span>
-            );
-          }
+if (!dispatchable) {
+  const describedById = `unknown-action-${action.id}`;
+  return (
+    <span key={action.id} className="inline-flex flex-col items-start">
+      <button
+        type="button"
+        aria-disabled="true"
+        aria-describedby={describedById}
+        onClick={(event) => event.preventDefault()}
+        className="cursor-not-allowed text-sm text-ink/30 underline decoration-ink/15 underline-offset-2"
+      >
+        {action.label}
+      </button>
+      <span id={describedById} className="sr-only">
+        Unknown action — not dispatchable
+      </span>
+    </span>
+  );
+}
 ```
 
 Update Task 4's `NextActions.test.tsx` assertion for this button: it is no longer literally `.toBeDisabled()` (that DOM API checks the `disabled` HTML attribute) — change the test to assert `getByRole('button', {name: 'Delete Everything'})` has `aria-disabled="true"`, and that clicking it still does not call `onAction`.
@@ -2689,6 +2734,7 @@ git commit -m "feat: accessible timeline roles, keyboard-reachable disabled acti
 ### Task 10: Dependency hygiene
 
 **Files:**
+
 - Create: `.github/dependabot.yml`
 - Modify: `.github/workflows/ci.yml`
 
@@ -2713,8 +2759,8 @@ updates:
 
 ```yaml
 # .github/workflows/ci.yml — add after the existing `npm ci` step
-      - run: npm audit --audit-level=high
-        continue-on-error: true
+- run: npm audit --audit-level=high
+  continue-on-error: true
 ```
 
 Read the current `.github/workflows/ci.yml` first and insert this step in a sensible place (right after `npm ci`, before `npm run lint`), preserving every existing step unchanged.
@@ -2735,6 +2781,7 @@ Do not add CodeQL, SBOM generation, or a dependency-review action — explicitly
 ### Task 11: README top-matter
 
 **Files:**
+
 - Modify: `README.md`
 
 Read the full current `README.md` before starting (241 lines as of the last commit; check its current line count with `wc -l README.md` since Tasks 4 and 8 already added a few lines to it). The total growth from this task, combined with Tasks 4/8's additions, must stay under +60 lines from the pre-hardening-pass baseline — if the hero/quick-start/status-table addition pushes over budget, condense the existing "What this is" paragraph rather than skipping any of the three new pieces.
@@ -2743,7 +2790,7 @@ Read the full current `README.md` before starting (241 lines as of the last comm
 
 Insert immediately after the `# agentic-dispute-workbench-ui` title (line 1) and before the existing "What this is" section:
 
-```markdown
+````markdown
 ![Three specialist agents streaming progress in parallel, mid-review](docs/images/three-zone-parallel-phase.png)
 
 **Quick start:**
@@ -2754,15 +2801,16 @@ npm install
 npm run dev
 # open http://localhost:5173, click "Review Dispute"
 ```
+````
 
-| Frontend (this repo)                         | Backend (`agentic-dispute-workbench-platform`) |
-| ---------------------------------------------- | ------------------------------------------------- |
-| ✓ React workbench, mock + live modes            | ○ Java orchestrator — in progress                  |
-| ✓ AG-UI client, inbound/outbound validation     | ○ Specialist A2A agents — in progress              |
-| ✓ A2UI closed catalog + approval gate           | ○ MCP case-system server — in progress             |
-| ✓ Tests, CI, captured-stream contract fixtures  |                                                     |
+| Frontend (this repo)                           | Backend (`agentic-dispute-workbench-platform`) |
+| ---------------------------------------------- | ---------------------------------------------- |
+| ✓ React workbench, mock + live modes           | ○ Java orchestrator — in progress              |
+| ✓ AG-UI client, inbound/outbound validation    | ○ Specialist A2A agents — in progress          |
+| ✓ A2UI closed catalog + approval gate          | ○ MCP case-system server — in progress         |
+| ✓ Tests, CI, captured-stream contract fixtures |                                                |
 
-```
+````
 
 Verify the screenshot path `docs/images/three-zone-parallel-phase.png` actually exists (`ls docs/images/`) before committing — it was captured during the visual-redesign pass; if the filename differs slightly, use the real one.
 
@@ -2793,7 +2841,7 @@ unreachable, a dropped connection, a `RUN_ERROR` event) shows in the
 timeline header with a Reconnect affordance when retryable; a protocol error
 (a payload that failed inbound validation) shows as a decision-panel notice.
 See the design doc's §3.7 for the exact status-derivation rules.
-```
+````
 
 - [ ] **Step 4: Verify the line budget and commit**
 

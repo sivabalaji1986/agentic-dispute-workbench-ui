@@ -90,7 +90,10 @@ export function LiveProgressPanel() {
                     >
                       {TAG_LABEL[line.source]}
                     </span>
-                    <span aria-hidden className="shrink-0 font-mono text-[10px] tabular-nums text-ink/35">
+                    <span
+                      aria-hidden
+                      className="shrink-0 font-mono text-[10px] tabular-nums text-ink/35"
+                    >
                       {new Date(line.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
@@ -108,13 +111,7 @@ export function LiveProgressPanel() {
   );
 }
 
-function ConnectionStrip({
-  status,
-  error,
-}: {
-  status: string;
-  error: WorkbenchError | null;
-}) {
+function ConnectionStrip({ status, error }: { status: string; error: WorkbenchError | null }) {
   if (status === 'connecting') {
     return (
       <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink/50">
