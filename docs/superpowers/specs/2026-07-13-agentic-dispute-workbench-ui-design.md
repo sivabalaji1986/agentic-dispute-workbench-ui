@@ -1,5 +1,12 @@
 # agentic-dispute-workbench-ui — Design
 
+> **2026-07-14 amendment (hardening pass):** New §3.7 "Error handling and
+> status model" documents `WorkbenchError` and the connection-status enum
+> change (`disconnected`/`finished` replaced by `awaiting-approval` /
+> `completed` / `cancelled` / `failed`, derived client-side from the current
+> surface root and the last dispatched action — nothing new for the backend
+> to send).
+
 > **2026-07-14 amendment (hardening pass):** New note in §4.1 documents the
 > frozen action-id allow-list (`src/agui/actionIds.ts`): the backend may only
 > ever expect `create_evidence_request_task`, `approve_task_creation`,
@@ -243,6 +250,37 @@ itself renders against (`src/components/catalog/schemas.ts`); a component
 type outside the closed catalog is *not* rejected here — it is intentionally
 left to the existing `UnknownComponentFallback` safety net (§4.2).
 
+### 3.7 Error handling and status model
+
+**[convention — frozen]** Errors are two independent, client-only signals —
+the backend does not need to send anything new to produce them:
+
+- **Transport errors** (`{code, title, message, retryable, runId?}`, shown in
+  the timeline header strip): backend unreachable when a case starts, an SSE
+  connection interrupted mid-run (`onRunFailed`), or a `RUN_ERROR` event
+  (its `message`/`code` are preserved verbatim).
+- **Protocol errors** (same shape, shown as a decision-panel notice): any
+  payload rejected by §3.6's inbound validation. `unsupported_a2ui_version`
+  is used specifically when the rejection is on the `version` field;
+  everything else is the generic `protocol_error` code with generic wording
+  — the raw payload is never shown in the UI.
+
+**[convention — frozen]** `connectionStatus` is
+`idle | connecting | streaming | awaiting-approval | completed | cancelled |
+failed` — this replaces the previous `disconnected`/`finished` pair. On
+`RUN_FINISHED`, the client derives the new status from the surface's current
+root component and which action (if any) it just dispatched:
+
+| Root component after finish | Last dispatched action id    | New status         |
+| ----------------------------- | ------------------------------ | -------------------- |
+| `ApprovalPreview`              | (any)                           | `awaiting-approval`  |
+| `TaskCreatedCard`              | (any)                           | `completed`          |
+| `DecisionCard`                 | `cancel_task_creation`          | `cancelled`          |
+| `DecisionCard`                 | none (the initial review run)   | `idle`               |
+
+This is entirely inferred client-side — the backend does not send a status
+field.
+
 ## 4. A2UI catalog
 
 Catalog id: `https://dispute-workbench.internal/catalogs/v1.json` (our own — not
@@ -370,8 +408,9 @@ Three-zone single page (Tailwind, light theme, dense enterprise-console aestheti
    Agent), strict arrival order, timestamped, auto-scroll with pause-on-hover.
 3. **Decision panel** — `A2uiSurface` for the session's one surface.
 
-Connection states: connecting → streaming → disconnected mid-run (reconnect button, no
-silent infinite retry) → finished.
+Connection states: connecting → streaming → failed mid-run (reconnect button, no
+silent infinite retry) → awaiting-approval / completed / cancelled / idle, per §3.7's
+status-derivation table.
 
 ## 6. State management
 
