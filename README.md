@@ -3,6 +3,24 @@
 [![CI](https://github.com/sivabalaji1986/agentic-dispute-workbench-ui/actions/workflows/ci.yml/badge.svg)](https://github.com/sivabalaji1986/agentic-dispute-workbench-ui/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
+![Three specialist agents streaming progress in parallel, mid-review](docs/images/three-zone-parallel-phase.png)
+
+**Quick start:**
+
+```bash
+git clone <this-repo> && cd agentic-dispute-workbench-ui
+npm install
+npm run dev
+# open http://localhost:5173, click "Review Dispute"
+```
+
+| Frontend (this repo)                           | Backend (`agentic-dispute-workbench-platform`) |
+| ---------------------------------------------- | ---------------------------------------------- |
+| ✓ React workbench, mock + live modes           | ○ Java orchestrator — in progress              |
+| ✓ AG-UI client, inbound/outbound validation    | ○ Specialist A2A agents — in progress          |
+| ✓ A2UI closed catalog + approval gate          | ○ MCP case-system server — in progress         |
+| ✓ Tests, CI, captured-stream contract fixtures |                                                |
+
 ## What this is
 
 Dispute ops today means an analyst alt-tabbing between a case system, a policy PDF, and
@@ -187,6 +205,28 @@ VITE_ORCHESTRATOR_URL=http://localhost:8080/agui
 
 No code changes — `src/agui/client.ts` picks between the mock engine and a real
 `HttpAgent` pointed at `VITE_ORCHESTRATOR_URL` based on `VITE_MOCK` alone.
+
+### Inbound validation
+
+Every event from the agent — progress lines, A2UI payloads, state
+snapshots/deltas — is validated against Zod schemas before the client acts
+on it, with fixed caps (20 components per update, 20 checklist items, 10
+actions, 500-character progress text). A payload that fails validation is
+dropped and logged, never applied and never thrown into the UI. See
+`src/agui/validation.ts` and the design doc's §3.6.
+
+### Error states
+
+Two kinds of error surface independently, both client-only signals stored
+as `transportError`/`protocolError` in the workbench store: a transport
+error (backend unreachable, a dropped connection, a `RUN_ERROR` event)
+shows in the timeline header with a Reconnect affordance when retryable; a
+protocol error (a payload that failed inbound validation) shows as a
+decision-panel notice. `connectionStatus` is one of `idle`, `connecting`,
+`streaming`, `awaiting-approval`, `completed`, `cancelled`, or `failed`,
+derived client-side from the surface's root component after each run
+finishes — the backend never sends a status field. See the design doc's
+§3.7 for the exact derivation rules.
 
 ## Catalog reference
 
