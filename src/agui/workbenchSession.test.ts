@@ -90,7 +90,7 @@ describe('WorkbenchSession', () => {
     });
   });
 
-  it('sets a retryable backend_unreachable transport error when the initial runAgent rejects', async () => {
+  it('sets a retryable TRANSPORT error when the initial runAgent rejects', async () => {
     const agent: AguiLikeAgent = {
       threadId: 'fake',
       subscribe: () => ({ unsubscribe: () => {} }),
